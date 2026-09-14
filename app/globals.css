@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/*
+  Panel de Ventas — sistema de color y tipografía.
+  Dirección visual: cálido y comercial, con vocabulario de manifiesto de carga /
+  factura de importación (paquetes, lotes, guías de envío) — no una plantilla de
+  dashboard SaaS genérica. Un solo tema (claro): esta herramienta se usa de día,
+  muchas veces al sol respondiendo mensajes en la calle, y la legibilidad en
+  exteriores pesa más que ofrecer modo oscuro.
+*/
+:root {
+  --paper: #f3ecdd; /* fondo — papel manila / lista de empaque */
+  --surface: #fffcf4; /* tarjetas, inputs — blanco cálido, apenas más claro que el fondo */
+  --surface-raised: #ffffff;
+  --ink: #2b2420; /* texto principal — carbón cálido, no negro puro */
+  --ink-muted: #6e6053; /* texto secundario / etiquetas */
+  --ink-faint: #a89b8a;
+  --line: #ddd0ba; /* bordes finos */
+  --line-strong: #c7b79a;
+
+  --accent: #c1531c; /* terracota quemada — acción primaria, etapa "Listo" */
+  --accent-ink: #fff8ef;
+  --accent-soft: #f1dcc7;
+  --accent-strong: #9c4214;
+
+  --gold: #a9791f; /* etapa "Apartado" */
+  --gold-soft: #efe1c0;
+
+  --route: #1f5c5a; /* domicilio — tinta de sello, fría a propósito para contrastar */
+  --route-soft: #d9eae7;
+  --route-strong: #143f3d;
+
+  --settled: #3f6b44; /* etapa "Entregado" — verde de libro contable, saldado */
+  --settled-soft: #dee9dd;
+
+  --alert: #a0272b; /* stock bajo, errores de validación */
+  --alert-soft: #f3dad7;
+
+  --focus-ring: #1f5c5a;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-strong: var(--accent-strong);
+  --color-gold: var(--gold);
+  --color-gold-soft: var(--gold-soft);
+  --color-route: var(--route);
+  --color-route-soft: var(--route-soft);
+  --color-route-strong: var(--route-strong);
+  --color-settled: var(--settled);
+  --color-settled-soft: var(--settled-soft);
+  --color-alert: var(--alert);
+  --color-alert-soft: var(--alert-soft);
+
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-public-sans);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Números tabulares para que precios y cantidades alineen en columnas */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+
+/* Foco visible y consistente en toda la app — accesibilidad, uso con teclado */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Zona segura para el tab bar inferior en celulares con gesto/notch */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
