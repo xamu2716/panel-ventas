@@ -11,7 +11,6 @@ export type Producto = {
   id: string;
   nombre: string;
   categoria: string;
-  arancel_pct: number;
   costo_unitario: number;
   precio_venta: number;
   stock: number;
@@ -20,7 +19,12 @@ export type Producto = {
   updated_at: string;
 };
 
-/** Un envío/compra real: costos compartidos entre todas sus líneas (lote_items). */
+/**
+ * Un envío/compra real: costos compartidos entre todas sus líneas (lote_items).
+ * `arancel_pct` es del envío completo, no de una referencia — se calcula una
+ * sola vez sobre el CIF de toda la caja (costo de mercancía + seguro + flete
+ * de TODAS las líneas juntas), igual que el flete o la tarifa aérea.
+ */
 export type Lote = {
   id: string;
   fecha: string;
@@ -28,6 +32,7 @@ export type Lote = {
   flete_total: number;
   seguro_total: number;
   tarifa_avion_total: number;
+  arancel_pct: number;
   notas: string | null;
   created_at: string;
 };
