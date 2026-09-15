@@ -16,25 +16,28 @@ Formato sugerido por línea: `ruta/ — qué vive ahí, en una frase`.
 - `app/inventario/page.tsx` — vista Inventario.
 - `app/publicidad/page.tsx` — vista Gastos de publicidad.
 - `app/resumen/page.tsx` — vista Resumen con KPIs y gráficas.
+- `app/simulacion/page.tsx` — vista Simulación (qué pasaría si vendo a tal precio/cantidad).
 - `app/layout.tsx` — layout raíz: fuentes (Fraunces + Public Sans) y `<Nav>`.
 - `app/globals.css` — tokens de color/tipografía (Tailwind v4 `@theme inline`).
-- `components/Nav.tsx` — navegación: barra lateral en escritorio, barra inferior en celular.
-- `components/ui.tsx` — primitivos reusados en toda la app (Button, Field, Input, Select, Textarea, ToggleGroup, Badge, Sheet, EmptyState).
+- `components/Nav.tsx` — navegación: barra lateral en escritorio, barra inferior en celular (5 secciones).
+- `components/ui.tsx` — primitivos reusados en toda la app (Button, Field, Input, Select, Textarea, ToggleGroup, Badge, Sheet, EmptyState). `ToggleGroup` acepta cualquier número de opciones (columnas via `gridTemplateColumns` inline, no clase fija).
 - `components/icons.tsx` — íconos SVG inline (sin librería externa).
+- `components/CategoriaBadge.tsx` — insignia de categoría de producto (texto libre): color estable vía `lib/chartColors.ts#colorCategoria`, reusada en Inventario y Resumen.
 - `components/pedidos/` — `PedidosView` (orquesta datos), `KanbanBoard`, `PedidoCard`, `PedidoForm`, `PedidoDetail`.
-- `components/inventario/` — `InventarioView`, `ProductoForm` (calculadora de costo por lote), `ProductoCard`.
+- `components/inventario/` — `InventarioView`, `ProductoForm` (calculadora de costo por lote, barco o avión; categoría como texto libre con `<datalist>` de sugerencias), `ProductoCard`.
 - `components/publicidad/` — `PublicidadView`, `GastoForm`.
-- `components/resumen/` — `ResumenView`, `KpiTiles`, `DesgloseTabla`, `charts.tsx` (las 6 gráficas Recharts), `ChartCard.tsx`.
+- `components/resumen/` — `ResumenView` (filtro de categoría que afecta toda la vista), `KpiTiles`, `DesgloseTabla`, `charts.tsx` (gráficas Recharts, incluyendo ventas por categoría y comparación de productos en el tiempo), `ChartCard.tsx`.
+- `components/simulacion/SimulacionView.tsx` — calculadora "qué pasaría si": por producto, categoría o todo el inventario, tabla precio × cantidad → ganancia, usando `lib/calc.ts` (sin cálculos propios).
 - `lib/supabaseClient.ts` — cliente de Supabase (browser, sin auth).
 - `lib/types.ts` — tipos TS que reflejan el esquema de la base de datos.
-- `lib/calc.ts` — TODOS los cálculos de negocio (costo por lote, ganancia, margen, formato COP). Un solo lugar, no duplicar cuentas en componentes.
-- `lib/metrics.ts` — agregaciones para Resumen (KPIs y datos por gráfica), a partir de los datos ya cargados.
-- `lib/chartColors.ts` — colores de gráficas, derivados de la marca pero validados aparte para accesibilidad (ver nota abajo).
+- `lib/calc.ts` — TODOS los cálculos de negocio (costo por lote barco/avión, ganancia, margen, formato COP). Un solo lugar, no duplicar cuentas en componentes.
+- `lib/metrics.ts` — agregaciones para Resumen (KPIs y datos por gráfica) a partir de los datos ya cargados, incluida `categoriasDisponibles` (lista de categorías reales, ya no un enum fijo).
+- `lib/chartColors.ts` — colores de gráficas: par fijo para series binarias (entrega) y `CATEGORIA_PALETTE`/`colorCategoria` para categorías de producto dinámicas, validados aparte para accesibilidad (ver nota abajo).
 - `lib/useRealtimeQuery.ts` — hook: carga una tabla y se resuscribe a cambios realtime de Supabase (recarga todo en cualquier cambio; suficiente para el volumen de un vendedor pequeño).
 
-**Esquema de Supabase** (proyecto `panel-ventas`, ref `mgyzwlymgwkbrqjhatjh`): tablas `productos`, `pedidos`, `gastos_publicidad`. El stock se ajusta con un trigger de Postgres al cambiar `pedidos.estado` (resta al entrar a "entregado", repone al salir), no desde el cliente. `pedidos.estado_actualizado_en` se actualiza solo cuando cambia `estado` (trigger aparte de `updated_at`) — es la base de la señal "días sin avanzar" y del eje de tiempo del resumen.
+**Esquema de Supabase** (proyecto `panel-ventas`, ref `mgyzwlymgwkbrqjhatjh`): tablas `productos`, `pedidos`, `gastos_publicidad`. `productos.categoria` es texto libre (sin CHECK de valores) — ya no un enum fijo chaqueta/jellycat; la UI sugiere las ya usadas vía `<datalist>`. `productos.metodo_importacion` (`barco`|`avion`) decide cómo se deriva `costo_unitario` en la UI: barco = (costo+flete+publicidad)/unidades; avión = ((CIF+arancel)×1.19 + tarifa_avion + publicidad)/unidades, con CIF = costo+seguro+flete y arancel = CIF×`arancel_pct`/100 (arancel fijo por referencia, guardado en el producto). El stock se ajusta con un trigger de Postgres al cambiar `pedidos.estado` (resta al entrar a "entregado", repone al salir), no desde el cliente. `pedidos.estado_actualizado_en` se actualiza solo cuando cambia `estado` (trigger aparte de `updated_at`) — es la base de la señal "días sin avanzar" y del eje de tiempo del resumen. Los GRANTs a `anon`/`authenticated` son a nivel de tabla: si se agregan columnas nuevas, no hace falta volver a otorgar permisos (confirmar de todas formas con una consulta a `information_schema.column_privileges` tras migrar).
 
-**Nota de colores de gráfica:** los tokens de `app/globals.css` (usados en badges/botones) son deliberadamente algo apagados para verse cálidos; para gráficas donde el color es la única forma de distinguir series, `lib/chartColors.ts` define variantes con más croma, validadas con el validador de accesibilidad de la skill `dataviz` (contraste, separación CVD, piso de visión normal) contra el fondo de tarjeta. Si se agregan series nuevas a una gráfica, volver a correr ese validador antes de fijar el color a mano.
+**Nota de colores de gráfica:** los tokens de `app/globals.css` (usados en badges/botones) son deliberadamente algo apagados para verse cálidos; para gráficas donde el color es la única forma de distinguir series, `lib/chartColors.ts` define variantes con más croma, validadas con el validador de accesibilidad de la skill `dataviz` (contraste, separación CVD, piso de visión normal) contra el fondo de tarjeta. `CATEGORIA_PALETTE` tiene 5 slots validados (más allá de eso, los colores se repiten — evitar agregar un 6º/7º slot sin correr el validador, un violeta ya se descartó por colisionar con el azul bajo protanopia/deuteranopia). Si se agregan series nuevas a una gráfica, volver a correr ese validador antes de fijar el color a mano.
 
 Antes de buscar algo por todo el proyecto con Grep o explorando carpetas, revisa primero si ya está listado aquí.
 
