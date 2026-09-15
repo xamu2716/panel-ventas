@@ -155,6 +155,32 @@ export function costoPromedioPonderado({
   return (stockActual * costoActual + unidadesNuevas * costoUnitarioNuevo) / unidadesTotales;
 }
 
+export type ReversarLineaInput = {
+  stockActual: number;
+  costoActual: number;
+  unidades: number;
+  costoUnitario: number;
+};
+
+/**
+ * Inverso de costoPromedioPonderado: el estado (stock, costo) de un producto
+ * ANTES de que se le aplicara esta línea de lote. Solo es exacto si esta línea
+ * fue la última compra registrada de esa referencia (nada más se sumó
+ * después) — es la base para poder editar/eliminar el lote más reciente de
+ * cada referencia sin tener que reproducir todo el historial de compras.
+ */
+export function reversarLinea({
+  stockActual,
+  costoActual,
+  unidades,
+  costoUnitario,
+}: ReversarLineaInput): { stock: number; costo: number } {
+  const stockAntes = stockActual - unidades;
+  if (stockAntes <= 0) return { stock: Math.max(stockAntes, 0), costo: 0 };
+  const costoAntes = (costoActual * stockActual - unidades * costoUnitario) / stockAntes;
+  return { stock: stockAntes, costo: costoAntes };
+}
+
 export function gananciaUnidad(precioVenta: number, costoUnitario: number): number {
   return precioVenta - costoUnitario;
 }
