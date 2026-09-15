@@ -3,24 +3,39 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Button, Field, Input, Sheet, ToggleGroup } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
-import { costoUnitarioLote, formatCOP, gananciaUnidad, margenPct } from "@/lib/calc";
-import type { Linea, Producto } from "@/lib/types";
+import {
+  cifLote,
+  costoUnitarioLote,
+  costoUnitarioLoteAvion,
+  formatCOP,
+  gananciaUnidad,
+  IVA_NACIONALIZACION_PCT,
+  margenPct,
+} from "@/lib/calc";
+import type { MetodoImportacion, Producto } from "@/lib/types";
 
 type Props = {
   producto?: Producto;
+  categoriasExistentes: readonly string[];
   onClose: () => void;
   onSaved: () => void;
 };
 
-export function ProductoForm({ producto, onClose, onSaved }: Props) {
+export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved }: Props) {
   const editando = !!producto;
 
   const [nombre, setNombre] = useState(producto?.nombre ?? "");
-  const [linea, setLinea] = useState<Linea>(producto?.linea ?? "chaqueta");
+  const [categoria, setCategoria] = useState(producto?.categoria ?? "");
+  const [metodo, setMetodo] = useState<MetodoImportacion>(producto?.metodo_importacion ?? "barco");
+
   const [alibaba, setAlibaba] = useState(String(producto?.costo_lote_alibaba ?? ""));
   const [flete, setFlete] = useState(String(producto?.flete_lote ?? ""));
+  const [seguro, setSeguro] = useState(String(producto?.seguro ?? ""));
+  const [arancelPct, setArancelPct] = useState(String(producto?.arancel_pct ?? ""));
+  const [tarifaAvion, setTarifaAvion] = useState(String(producto?.tarifa_avion ?? ""));
   const [publicidad, setPublicidad] = useState(String(producto?.publicidad_lote ?? ""));
   const [unidadesLote, setUnidadesLote] = useState(String(producto?.unidades_lote ?? ""));
+
   const [costoUnitario, setCostoUnitario] = useState(String(producto?.costo_unitario ?? ""));
   const [costoTocado, setCostoTocado] = useState(false);
   const [precioVenta, setPrecioVenta] = useState(String(producto?.precio_venta ?? ""));
@@ -31,16 +46,31 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
 
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s));
 
-  const costoCalculado = useMemo(
-    () =>
-      costoUnitarioLote({
+  const cif = useMemo(
+    () => cifLote({ alibaba: num(alibaba), seguro: num(seguro), flete: num(flete) }),
+    [alibaba, seguro, flete],
+  );
+  const montoArancel = cif * (num(arancelPct) / 100);
+
+  const costoCalculado = useMemo(() => {
+    if (metodo === "avion") {
+      return costoUnitarioLoteAvion({
         alibaba: num(alibaba),
+        seguro: num(seguro),
         flete: num(flete),
+        arancelPct: num(arancelPct),
+        tarifaAvion: num(tarifaAvion),
         publicidad: num(publicidad),
         unidades: num(unidadesLote),
-      }),
-    [alibaba, flete, publicidad, unidadesLote],
-  );
+      });
+    }
+    return costoUnitarioLote({
+      alibaba: num(alibaba),
+      flete: num(flete),
+      publicidad: num(publicidad),
+      unidades: num(unidadesLote),
+    });
+  }, [metodo, alibaba, seguro, flete, arancelPct, tarifaAvion, publicidad, unidadesLote]);
 
   const costoEfectivo = costoTocado ? num(costoUnitario) : costoCalculado;
   const ganancia = gananciaUnidad(num(precioVenta), costoEfectivo);
@@ -59,6 +89,10 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
       setError("Escribe el nombre o referencia del producto.");
       return;
     }
+    if (!categoria.trim()) {
+      setError("Escribe la categoría del producto (ej. chaqueta, jellycat).");
+      return;
+    }
     if (num(unidadesLote) <= 0) {
       setError("Las unidades del lote deben ser al menos 1.");
       return;
@@ -71,9 +105,13 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
     setSaving(true);
     const payload = {
       nombre: nombre.trim(),
-      linea,
+      categoria: categoria.trim(),
+      metodo_importacion: metodo,
       costo_lote_alibaba: num(alibaba),
       flete_lote: num(flete),
+      seguro: metodo === "avion" ? num(seguro) : 0,
+      arancel_pct: metodo === "avion" ? num(arancelPct) : 0,
+      tarifa_avion: metodo === "avion" ? num(tarifaAvion) : 0,
       publicidad_lote: num(publicidad),
       unidades_lote: num(unidadesLote),
       costo_unitario: costoEfectivo,
@@ -108,14 +146,34 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
           />
         </Field>
 
-        <Field label="Línea" htmlFor="linea">
+        <Field
+          label="Categoría"
+          htmlFor="categoria"
+          hint="Escribe la que necesites — no está limitada a una lista fija."
+        >
+          <Input
+            id="categoria"
+            list="categorias-existentes"
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+            placeholder="Ej. chaqueta, jellycat…"
+            required
+          />
+          <datalist id="categorias-existentes">
+            {categoriasExistentes.map((c) => (
+              <option key={c} value={c} />
+            ))}
+          </datalist>
+        </Field>
+
+        <Field label="Método de importación" htmlFor="metodo">
           <ToggleGroup
-            name="Línea de producto"
-            value={linea}
-            onChange={setLinea}
+            name="Método de importación"
+            value={metodo}
+            onChange={setMetodo}
             options={[
-              { value: "chaqueta", label: "Chaqueta" },
-              { value: "jellycat", label: "Jellycat" },
+              { value: "barco", label: "Barco" },
+              { value: "avion", label: "Avión" },
             ]}
           />
         </Field>
@@ -123,7 +181,7 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
         <div className="rounded-md border border-line bg-paper/60 p-4">
           <p className="mb-3 text-sm font-semibold text-ink">Costo del lote</p>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Costo en Alibaba" htmlFor="alibaba">
+            <Field label="Costo de la mercancía" htmlFor="alibaba">
               <Input
                 id="alibaba"
                 inputMode="decimal"
@@ -141,6 +199,47 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
                 placeholder="0"
               />
             </Field>
+
+            {metodo === "avion" && (
+              <>
+                <Field label="Seguro" htmlFor="seguro">
+                  <Input
+                    id="seguro"
+                    inputMode="decimal"
+                    value={seguro}
+                    onChange={(e) => setSeguro(e.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+                <Field
+                  label="Arancel de esta referencia"
+                  htmlFor="arancelPct"
+                  hint="% sobre el CIF (costo+seguro+flete). Varía por producto: 5%, 10%, 50%…"
+                >
+                  <Input
+                    id="arancelPct"
+                    inputMode="decimal"
+                    value={arancelPct}
+                    onChange={(e) => setArancelPct(e.target.value)}
+                    placeholder="Ej. 10"
+                  />
+                </Field>
+                <Field
+                  label="Tarifa aérea"
+                  htmlFor="tarifaAvion"
+                  hint="Cargo fijo del envío por avión (típico ~130.000)."
+                >
+                  <Input
+                    id="tarifaAvion"
+                    inputMode="decimal"
+                    value={tarifaAvion}
+                    onChange={(e) => setTarifaAvion(e.target.value)}
+                    placeholder="Ej. 130000"
+                  />
+                </Field>
+              </>
+            )}
+
             <Field label="Publicidad del lote" htmlFor="publicidad">
               <Input
                 id="publicidad"
@@ -161,6 +260,24 @@ export function ProductoForm({ producto, onClose, onSaved }: Props) {
               />
             </Field>
           </div>
+
+          {metodo === "avion" && (
+            <div className="mt-3 flex flex-col gap-1 rounded-md border border-line bg-surface px-3 py-2.5 text-xs text-ink-muted">
+              <p>
+                CIF (costo + seguro + flete): <span className="tabular font-medium text-ink">{formatCOP(cif)}</span>
+              </p>
+              <p>
+                Arancel ({num(arancelPct) || 0}% del CIF):{" "}
+                <span className="tabular font-medium text-ink">{formatCOP(montoArancel)}</span>
+              </p>
+              <p>
+                Nacionalizado con IVA ({IVA_NACIONALIZACION_PCT}% sobre CIF+arancel):{" "}
+                <span className="tabular font-medium text-ink">
+                  {formatCOP((cif + montoArancel) * (1 + IVA_NACIONALIZACION_PCT / 100))}
+                </span>
+              </p>
+            </div>
+          )}
 
           <div className="mt-4 flex items-end justify-between gap-3 rounded-md bg-accent-soft/50 px-3 py-3">
             <div>
