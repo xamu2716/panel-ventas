@@ -88,6 +88,26 @@ export function margenPorProducto(productos: Producto[]) {
   }));
 }
 
+/** Capital invertido (stock actual × costo unitario) por producto — cuánta plata hay parada. */
+export function capitalPorProducto(productos: Producto[]) {
+  return productos.map((p) => ({
+    nombre: p.nombre,
+    categoria: p.categoria,
+    capital: p.stock * p.costo_unitario,
+  }));
+}
+
+/** Capital invertido agregado por categoría (vista "Todas"). */
+export function capitalPorCategoria(productos: Producto[]) {
+  const categorias = categoriasDisponibles(productos);
+  return categorias.map((categoria) => ({
+    categoria,
+    capital: productos
+      .filter((p) => p.categoria === categoria)
+      .reduce((acc, p) => acc + p.stock * p.costo_unitario, 0),
+  }));
+}
+
 /** Lista ordenada (alfabético) de las categorías presentes en el inventario. */
 export function categoriasDisponibles(productos: Producto[]): string[] {
   return [...new Set(productos.map((p) => p.categoria))].sort((a, b) => a.localeCompare(b));

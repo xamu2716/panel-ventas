@@ -156,24 +156,20 @@ export function VentasPorProductoChart({
   );
 }
 
-/* 3. Barras de margen por producto */
-export function MargenPorProductoChart({
+/* 3. Barras de capital invertido (stock × costo unitario) por producto */
+export function CapitalPorProductoChart({
   data,
   categoriasOrdenadas,
 }: {
-  data: { nombre: string; categoria: string; margen: number }[];
+  data: { nombre: string; categoria: string; capital: number }[];
   categoriasOrdenadas: readonly string[];
 }) {
   return (
-    <ChartCard title="Margen por producto" legend={<CategoriaLegend categorias={categoriasOrdenadas} />}>
+    <ChartCard title="Capital invertido por producto" legend={<CategoriaLegend categorias={categoriasOrdenadas} />}>
       <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={CHART_GRID} horizontal={false} />
-          <XAxis
-            type="number"
-            tick={axisTick}
-            tickFormatter={(v: number) => `${v.toFixed(0)}%`}
-          />
+          <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => formatCOPCompact(v)} />
           <YAxis
             type="category"
             dataKey="nombre"
@@ -183,9 +179,9 @@ export function MargenPorProductoChart({
           />
           <Tooltip
             contentStyle={tooltipStyle}
-            formatter={(value) => [`${num(value).toFixed(1)}%`, "Margen"]}
+            formatter={(value) => [formatCOP(num(value)), "Capital invertido"]}
           />
-          <Bar dataKey="margen" radius={[0, 4, 4, 0]}>
+          <Bar dataKey="capital" radius={[0, 4, 4, 0]}>
             {data.map((d) => (
               <Cell key={d.nombre} fill={colorCategoria(d.categoria, categoriasOrdenadas)} />
             ))}
@@ -302,6 +298,39 @@ export function VentasPorCategoriaChart({
               }
             />
             <Bar dataKey="unidades" radius={[0, 4, 4, 0]}>
+              {data.map((d) => (
+                <Cell key={d.categoria} fill={colorCategoria(d.categoria, categorias)} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  );
+}
+
+/* Barras de capital invertido (stock × costo unitario) agregado por categoría */
+export function CapitalPorCategoriaChart({
+  data,
+}: {
+  data: { categoria: string; capital: number }[];
+}) {
+  const categorias = data.map((d) => d.categoria);
+  return (
+    <ChartCard title="Capital invertido por categoría">
+      {data.length === 0 ? (
+        <p className="py-10 text-center text-sm text-ink-muted">Todavía no hay inventario cargado.</p>
+      ) : (
+        <ResponsiveContainer width="100%" height={Math.max(180, data.length * 46)}>
+          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke={CHART_GRID} horizontal={false} />
+            <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => formatCOPCompact(v)} />
+            <YAxis type="category" dataKey="categoria" tick={axisTick} width={110} />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              formatter={(value) => [formatCOP(num(value)), "Capital invertido"]}
+            />
+            <Bar dataKey="capital" radius={[0, 4, 4, 0]}>
               {data.map((d) => (
                 <Cell key={d.categoria} fill={colorCategoria(d.categoria, categorias)} />
               ))}

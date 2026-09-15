@@ -5,11 +5,12 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
 import type { GastoPublicidad, LoteItem, PedidoConProducto, Producto } from "@/lib/types";
 import {
+  capitalPorCategoria,
+  capitalPorProducto,
   categoriasDisponibles,
   computeKpis,
   desglosePorProducto,
   distribucionEntrega,
-  margenPorProducto,
   pedidosPorEstado,
   stockPorProducto,
   ventasPorCategoria,
@@ -21,10 +22,11 @@ import { KpiTiles } from "./KpiTiles";
 import { DesgloseTabla } from "./DesgloseTabla";
 import { colorCategoria } from "@/lib/chartColors";
 import {
+  CapitalPorCategoriaChart,
+  CapitalPorProductoChart,
   EntregaDonutChart,
   EstadoBarChart,
   IngresosLineChart,
-  MargenPorProductoChart,
   StockPorProductoChart,
   VentasPorCategoriaChart,
   VentasPorProductoChart,
@@ -142,8 +144,8 @@ export function ResumenView() {
               data={ventasPorProducto(pedidosFiltrados, productosFiltrados)}
               categoriasOrdenadas={categorias}
             />
-            <MargenPorProductoChart
-              data={margenPorProducto(productosFiltrados)}
+            <CapitalPorProductoChart
+              data={capitalPorProducto(productosFiltrados)}
               categoriasOrdenadas={categorias}
             />
             <EntregaDonutChart data={distribucionEntrega(pedidosFiltrados)} />
@@ -152,7 +154,10 @@ export function ResumenView() {
               categoriasOrdenadas={categorias}
             />
             {categoriaSel === TODAS ? (
-              <VentasPorCategoriaChart data={ventasPorCategoria(pedidos, productos)} />
+              <>
+                <VentasPorCategoriaChart data={ventasPorCategoria(pedidos, productos)} />
+                <CapitalPorCategoriaChart data={capitalPorCategoria(productos)} />
+              </>
             ) : (
               <VentasPorProductoTiempoChart
                 data={ventasPorProductoEnTiempo(pedidosFiltrados, productosFiltrados)}
