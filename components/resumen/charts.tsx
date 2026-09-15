@@ -16,6 +16,7 @@ import {
 } from "recharts";
 import { formatCOP, formatCOPCompact, formatFecha } from "@/lib/calc";
 import {
+  CATEGORIA_PALETTE,
   CHART_AXIS_TEXT,
   CHART_ESTADO_RAMP,
   CHART_GANANCIA,
@@ -23,8 +24,9 @@ import {
   CHART_INGRESOS,
   CHART_SLOT_1,
   CHART_SLOT_2,
+  colorCategoria,
 } from "@/lib/chartColors";
-import type { EstadoPedido, Linea } from "@/lib/types";
+import type { EstadoPedido } from "@/lib/types";
 import { ChartCard, LegendDot } from "./ChartCard";
 
 const axisTick = { fill: CHART_AXIS_TEXT, fontSize: 11 };
@@ -46,16 +48,16 @@ function num(v: unknown): number {
   return typeof v === "number" ? v : Number(v) || 0;
 }
 
-function colorLinea(linea: Linea) {
-  return linea === "chaqueta" ? CHART_SLOT_1 : CHART_SLOT_2;
+/** Leyenda de categorías dinámica: una LegendDot por cada categoría presente. */
+function CategoriaLegend({ categorias }: { categorias: readonly string[] }) {
+  return (
+    <div className="flex flex-wrap gap-3">
+      {categorias.map((c) => (
+        <LegendDot key={c} color={colorCategoria(c, categorias)} label={c} />
+      ))}
+    </div>
+  );
 }
-
-const lineaLegend = (
-  <div className="flex gap-3">
-    <LegendDot color={CHART_SLOT_1} label="Chaqueta" />
-    <LegendDot color={CHART_SLOT_2} label="Jellycat" />
-  </div>
-);
 
 /* 1. Línea de ingresos y ganancia por día */
 export function IngresosLineChart({
@@ -121,11 +123,13 @@ export function IngresosLineChart({
 /* 2. Barras de ventas (unidades entregadas) por producto */
 export function VentasPorProductoChart({
   data,
+  categoriasOrdenadas,
 }: {
-  data: { nombre: string; linea: Linea; unidades: number }[];
+  data: { nombre: string; categoria: string; unidades: number }[];
+  categoriasOrdenadas: readonly string[];
 }) {
   return (
-    <ChartCard title="Ventas por producto" legend={lineaLegend}>
+    <ChartCard title="Ventas por producto" legend={<CategoriaLegend categorias={categoriasOrdenadas} />}>
       <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={CHART_GRID} horizontal={false} />
@@ -143,7 +147,7 @@ export function VentasPorProductoChart({
           />
           <Bar dataKey="unidades" radius={[0, 4, 4, 0]}>
             {data.map((d) => (
-              <Cell key={d.nombre} fill={colorLinea(d.linea)} />
+              <Cell key={d.nombre} fill={colorCategoria(d.categoria, categoriasOrdenadas)} />
             ))}
           </Bar>
         </BarChart>
@@ -155,11 +159,13 @@ export function VentasPorProductoChart({
 /* 3. Barras de margen por producto */
 export function MargenPorProductoChart({
   data,
+  categoriasOrdenadas,
 }: {
-  data: { nombre: string; linea: Linea; margen: number }[];
+  data: { nombre: string; categoria: string; margen: number }[];
+  categoriasOrdenadas: readonly string[];
 }) {
   return (
-    <ChartCard title="Margen por producto" legend={lineaLegend}>
+    <ChartCard title="Margen por producto" legend={<CategoriaLegend categorias={categoriasOrdenadas} />}>
       <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={CHART_GRID} horizontal={false} />
@@ -181,7 +187,7 @@ export function MargenPorProductoChart({
           />
           <Bar dataKey="margen" radius={[0, 4, 4, 0]}>
             {data.map((d) => (
-              <Cell key={d.nombre} fill={colorLinea(d.linea)} />
+              <Cell key={d.nombre} fill={colorCategoria(d.categoria, categoriasOrdenadas)} />
             ))}
           </Bar>
         </BarChart>
@@ -237,11 +243,13 @@ export function EntregaDonutChart({ data }: { data: { name: string; value: numbe
 /* 5. Barras de stock restante por referencia */
 export function StockPorProductoChart({
   data,
+  categoriasOrdenadas,
 }: {
-  data: { nombre: string; linea: Linea; stock: number; bajo: boolean }[];
+  data: { nombre: string; categoria: string; stock: number; bajo: boolean }[];
+  categoriasOrdenadas: readonly string[];
 }) {
   return (
-    <ChartCard title="Stock restante por referencia" legend={lineaLegend}>
+    <ChartCard title="Stock restante por referencia" legend={<CategoriaLegend categorias={categoriasOrdenadas} />}>
       <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={CHART_GRID} horizontal={false} />
@@ -259,11 +267,111 @@ export function StockPorProductoChart({
           />
           <Bar dataKey="stock" radius={[0, 4, 4, 0]}>
             {data.map((d) => (
-              <Cell key={d.nombre} fill={colorLinea(d.linea)} opacity={d.bajo ? 0.55 : 1} />
+              <Cell key={d.nombre} fill={colorCategoria(d.categoria, categoriasOrdenadas)} opacity={d.bajo ? 0.55 : 1} />
             ))}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
+    </ChartCard>
+  );
+}
+
+/* 7. Barras de ventas (unidades + ingresos) agregadas por categoría */
+export function VentasPorCategoriaChart({
+  data,
+}: {
+  data: { categoria: string; unidades: number; ingresos: number }[];
+}) {
+  const categorias = data.map((d) => d.categoria);
+  return (
+    <ChartCard title="Ventas por categoría">
+      {data.length === 0 ? (
+        <p className="py-10 text-center text-sm text-ink-muted">
+          Aún no hay pedidos entregados para graficar.
+        </p>
+      ) : (
+        <ResponsiveContainer width="100%" height={Math.max(180, data.length * 46)}>
+          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke={CHART_GRID} horizontal={false} />
+            <XAxis type="number" tick={axisTick} allowDecimals={false} />
+            <YAxis type="category" dataKey="categoria" tick={axisTick} width={110} />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              formatter={(value, name) =>
+                name === "ingresos" ? [formatCOP(num(value)), "Ingresos"] : [`${num(value)} unidad(es)`, "Vendido"]
+              }
+            />
+            <Bar dataKey="unidades" radius={[0, 4, 4, 0]}>
+              {data.map((d) => (
+                <Cell key={d.categoria} fill={colorCategoria(d.categoria, categorias)} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  );
+}
+
+/* 8. Líneas múltiples: unidades vendidas por producto en el tiempo, para comparar
+   referencias de una misma categoría (cuál se vende más rápido). */
+export function VentasPorProductoTiempoChart({
+  data,
+  productos,
+}: {
+  data: { fecha: string; [producto: string]: number | string }[];
+  productos: readonly string[];
+}) {
+  // Colores por posición del producto (no por categoría: aquí cada línea es una
+  // referencia individual dentro de la categoría filtrada).
+  const colores = productos.map((_, i) => CATEGORIA_PALETTE[i % CATEGORIA_PALETTE.length]);
+  return (
+    <ChartCard
+      title="Unidades por producto en el tiempo"
+      legend={
+        <div className="flex flex-wrap gap-3">
+          {productos.map((p, i) => (
+            <LegendDot key={p} color={colores[i]} label={p} />
+          ))}
+        </div>
+      }
+    >
+      {data.length === 0 || productos.length === 0 ? (
+        <p className="py-10 text-center text-sm text-ink-muted">
+          Aún no hay ventas entregadas de esta categoría para comparar.
+        </p>
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <LineChart data={data} margin={{ top: 5, right: 12, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke={CHART_GRID} vertical={false} />
+            <XAxis
+              dataKey="fecha"
+              tick={axisTick}
+              tickFormatter={(v: string) => formatFecha(v)}
+              minTickGap={20}
+            />
+            <YAxis tick={axisTick} width={30} allowDecimals={false} />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              labelFormatter={(v) => formatFecha(String(v))}
+              formatter={(value, name) => [`${num(value)} unidad(es)`, String(name)]}
+            />
+            {productos.map((p, i) => (
+              <Line
+                key={p}
+                type="monotone"
+                dataKey={p}
+                name={p}
+                stroke={colores[i]}
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+                connectNulls
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      )}
     </ChartCard>
   );
 }
