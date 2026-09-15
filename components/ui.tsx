@@ -67,6 +67,36 @@ export function Input(props: InputHTMLAttributes<HTMLInputElement>) {
   return <input className={controlClass} {...props} />;
 }
 
+const milesFormatter = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 });
+
+/**
+ * Input para montos en pesos: mientras escribes, muestra separador de miles
+ * ("1.000.000") para que sea fácil ver si digitaste mil o un millón. El valor
+ * que entra y sale (`value`/`onChange`) siempre es el número plano en texto
+ * (ej. "1000000"), igual que un Input normal — solo cambia lo que se ve.
+ */
+export function MoneyInput({
+  value,
+  onChange,
+  ...props
+}: {
+  value: string;
+  onChange: (raw: string) => void;
+} & Omit<InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type">) {
+  const digits = value.replace(/\D/g, "");
+  const formateado = digits ? milesFormatter.format(Number(digits)) : "";
+  return (
+    <input
+      {...props}
+      type="text"
+      inputMode="numeric"
+      className={controlClass}
+      value={formateado}
+      onChange={(e) => onChange(e.target.value.replace(/\D/g, ""))}
+    />
+  );
+}
+
 export function Textarea(props: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`${controlClass} min-h-24 py-3`} {...props} />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Button, Field, Input, Sheet, Textarea } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, Sheet, Textarea } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
 
 function hoyISO() {
@@ -52,14 +52,7 @@ export function GastoForm({ onClose, onSaved }: { onClose: () => void; onSaved: 
           htmlFor="monto"
           hint="Publicidad extra, no ligada al costo de un lote de producto."
         >
-          <Input
-            id="monto"
-            inputMode="decimal"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            placeholder="0"
-            required
-          />
+          <MoneyInput id="monto" value={monto} onChange={setMonto} placeholder="0" required />
         </Field>
         <Field label="Nota (opcional)" htmlFor="nota">
           <Textarea
