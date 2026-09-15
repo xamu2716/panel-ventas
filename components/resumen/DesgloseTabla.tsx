@@ -1,9 +1,14 @@
-import { Badge } from "@/components/ui";
-import type { Linea } from "@/lib/types";
+import { CategoriaBadge } from "@/components/CategoriaBadge";
 
-type Fila = { nombre: string; linea: Linea; vendido: number; pendiente: number; margen: number };
+type Fila = { nombre: string; categoria: string; vendido: number; pendiente: number; margen: number };
 
-export function DesgloseTabla({ filas }: { filas: Fila[] }) {
+export function DesgloseTabla({
+  filas,
+  categoriasOrdenadas,
+}: {
+  filas: Fila[];
+  categoriasOrdenadas: readonly string[];
+}) {
   if (filas.length === 0) {
     return <p className="text-sm text-ink-muted">Sin productos en inventario todavía.</p>;
   }
@@ -13,7 +18,7 @@ export function DesgloseTabla({ filas }: { filas: Fila[] }) {
         <thead>
           <tr className="border-b border-line bg-paper/60 text-left text-ink-muted">
             <th className="px-4 py-2.5 font-medium">Producto</th>
-            <th className="px-4 py-2.5 font-medium">Línea</th>
+            <th className="px-4 py-2.5 font-medium">Categoría</th>
             <th className="px-4 py-2.5 text-right font-medium">Vendido</th>
             <th className="px-4 py-2.5 text-right font-medium">Pendiente</th>
             <th className="px-4 py-2.5 text-right font-medium">Margen</th>
@@ -24,9 +29,7 @@ export function DesgloseTabla({ filas }: { filas: Fila[] }) {
             <tr key={f.nombre} className="border-b border-line last:border-0">
               <td className="px-4 py-2.5 font-medium text-ink">{f.nombre}</td>
               <td className="px-4 py-2.5">
-                <Badge tone={f.linea === "chaqueta" ? "accent" : "route"}>
-                  {f.linea === "chaqueta" ? "Chaqueta" : "Jellycat"}
-                </Badge>
+                <CategoriaBadge categoria={f.categoria} categoriasOrdenadas={categoriasOrdenadas} />
               </td>
               <td className="tabular px-4 py-2.5 text-right text-ink">{f.vendido}</td>
               <td className="tabular px-4 py-2.5 text-right text-ink">{f.pendiente}</td>

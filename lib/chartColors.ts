@@ -8,15 +8,46 @@
  * gráfica, necesitan más croma para separarse de verdad.
  */
 
-// Par categórico de 2 series, orden fijo, reusado en toda gráfica con exactamente
-// dos categorías (línea de producto, o tipo de entrega). Nunca se ciclan ni se
-// reasignan según el filtro activo.
+// Par fijo de 2 series para gráficas con exactamente dos categorías que NO son
+// "categoría de producto" (ej. tipo de entrega: recoge vs. domicilio). Nunca se
+// ciclan ni se reasignan según el filtro activo.
 export const CHART_SLOT_1 = "#c1531c"; // terracota — mismo acento que el resto de la UI
-export const CHART_SLOT_2 = "#008f91"; // teal de gráfica (más vívido que --route de la UI)
+export const CHART_SLOT_2 = "#0592a3"; // teal de gráfica (más vívido que --route de la UI)
 
 // Serie adicional para la línea de ingresos vs. ganancia (2 series, ambas dinero).
 export const CHART_INGRESOS = CHART_SLOT_1;
 export const CHART_GANANCIA = "#38804b"; // verde de gráfica (más vívido que --settled de la UI)
+
+/**
+ * Paleta categórica para "categoría de producto" (dinámica: el dueño puede
+ * escribir la que quiera, ya no son solo chaqueta/jellycat). Validada con el
+ * validador de accesibilidad de la skill dataviz contra la superficie de tarjeta
+ * (#fffcf4): banda de luminosidad, piso de croma, separación CVD (par adyacente,
+ * modo claro) y piso de visión normal — los 5 slots pasan todos los checks
+ * (ver `node scripts/validate_palette.js` de la skill dataviz). Se evitó un 6º/7º
+ * slot (violeta) porque colisiona con el azul bajo protanopia/deuteranopia.
+ * Con más de 5 categorías reales (muy improbable para este negocio), los colores
+ * se repiten — es preferible a inventar un hue no validado.
+ */
+export const CATEGORIA_PALETTE = [
+  CHART_SLOT_1, // terracota
+  CHART_SLOT_2, // teal
+  "#b07a00", // dorado/mostaza
+  "#1f5fb0", // azul
+  "#d1447e", // magenta
+] as const;
+
+/**
+ * Asigna un color estable a una categoría según su posición en la lista de
+ * categorías ordenadas (alfabético, calculada una sola vez por vista con
+ * `categoriasDisponibles`). Estable = la misma categoría siempre sale del mismo
+ * color mientras no cambie el conjunto de categorías presentes.
+ */
+export function colorCategoria(categoria: string, categoriasOrdenadas: readonly string[]): string {
+  const idx = categoriasOrdenadas.indexOf(categoria);
+  if (idx < 0) return CATEGORIA_PALETTE[0];
+  return CATEGORIA_PALETTE[idx % CATEGORIA_PALETTE.length];
+}
 
 // Rampa ordinal (una sola tonalidad, terracota, clara→oscura) para las 4 etapas
 // del pedido: es una secuencia de embudo, no identidades sueltas, así que usa

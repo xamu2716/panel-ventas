@@ -62,7 +62,7 @@ export function ventasPorProducto(pedidos: PedidoConProducto[], productos: Produ
     const suyos = entregados.filter((p) => p.producto_id === prod.id);
     return {
       nombre: prod.nombre,
-      linea: prod.linea,
+      categoria: prod.categoria,
       unidades: suyos.reduce((a, p) => a + p.cantidad, 0),
       ingresos: suyos.reduce((a, p) => a + totalPedido(p.precio_unitario_snapshot, p.cantidad), 0),
     };
@@ -72,9 +72,58 @@ export function ventasPorProducto(pedidos: PedidoConProducto[], productos: Produ
 export function margenPorProducto(productos: Producto[]) {
   return productos.map((p) => ({
     nombre: p.nombre,
-    linea: p.linea,
+    categoria: p.categoria,
     margen: margenPct(p.precio_venta, p.costo_unitario),
   }));
+}
+
+/** Lista ordenada (alfabético) de las categorías presentes en el inventario. */
+export function categoriasDisponibles(productos: Producto[]): string[] {
+  return [...new Set(productos.map((p) => p.categoria))].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Unidades entregadas por producto y por día, en formato "ancho" para una
+ * gráfica de líneas múltiples (una línea por producto): cada fila es un día,
+ * con una clave por nombre de producto. Sirve para comparar qué referencia de
+ * una misma categoría se vende más rápido.
+ */
+export function ventasPorProductoEnTiempo(
+  pedidos: PedidoConProducto[],
+  productos: Producto[],
+): { fecha: string; [producto: string]: number | string }[] {
+  const entregados = pedidos.filter((p) => p.estado === "entregado");
+  const nombrePorId = new Map(productos.map((p) => [p.id, p.nombre]));
+  const porFecha = new Map<string, Record<string, number>>();
+
+  for (const p of entregados) {
+    const nombre = nombrePorId.get(p.producto_id);
+    if (!nombre) continue;
+    const fecha = p.estado_actualizado_en.slice(0, 10);
+    const fila = porFecha.get(fecha) ?? {};
+    fila[nombre] = (fila[nombre] ?? 0) + p.cantidad;
+    porFecha.set(fecha, fila);
+  }
+
+  return [...porFecha.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([fecha, unidadesPorProducto]) => ({ fecha, ...unidadesPorProducto }));
+}
+
+/** Unidades entregadas e ingresos agregados por categoría (vista "Todas"). */
+export function ventasPorCategoria(pedidos: PedidoConProducto[], productos: Producto[]) {
+  const entregados = pedidos.filter((p) => p.estado === "entregado");
+  const productoPorId = new Map(productos.map((p) => [p.id, p]));
+  const categorias = categoriasDisponibles(productos);
+
+  return categorias.map((categoria) => {
+    const deCategoria = entregados.filter((p) => productoPorId.get(p.producto_id)?.categoria === categoria);
+    return {
+      categoria,
+      unidades: deCategoria.reduce((a, p) => a + p.cantidad, 0),
+      ingresos: deCategoria.reduce((a, p) => a + totalPedido(p.precio_unitario_snapshot, p.cantidad), 0),
+    };
+  });
 }
 
 export function distribucionEntrega(pedidos: PedidoConProducto[]) {
@@ -87,7 +136,7 @@ export function distribucionEntrega(pedidos: PedidoConProducto[]) {
 export function stockPorProducto(productos: Producto[]) {
   return productos.map((p) => ({
     nombre: p.nombre,
-    linea: p.linea,
+    categoria: p.categoria,
     stock: p.stock,
     bajo: p.stock <= p.umbral_stock_bajo,
   }));
@@ -106,7 +155,7 @@ export function desglosePorProducto(pedidos: PedidoConProducto[], productos: Pro
     const deProd = pedidos.filter((p) => p.producto_id === prod.id);
     return {
       nombre: prod.nombre,
-      linea: prod.linea,
+      categoria: prod.categoria,
       vendido: deProd.filter((p) => p.estado === "entregado").reduce((a, p) => a + p.cantidad, 0),
       pendiente: deProd
         .filter((p) => p.estado !== "entregado")

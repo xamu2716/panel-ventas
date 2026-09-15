@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
 import type { Producto } from "@/lib/types";
+import { categoriasDisponibles } from "@/lib/metrics";
 import { Button, EmptyState } from "@/components/ui";
 import { IconPlus } from "@/components/icons";
 import { ProductoForm } from "./ProductoForm";
@@ -21,6 +22,7 @@ export function InventarioView() {
   const [formOpen, setFormOpen] = useState(false);
   const [editando, setEditando] = useState<Producto | undefined>(undefined);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const categorias = useMemo(() => categoriasDisponibles(productos), [productos]);
 
   function abrirNuevo() {
     setEditando(undefined);
@@ -81,6 +83,7 @@ export function InventarioView() {
               <ProductoCard
                 key={p.id}
                 producto={p}
+                categoriasOrdenadas={categorias}
                 onEdit={() => abrirEditar(p)}
                 onDelete={() => eliminar(p)}
               />
@@ -92,6 +95,7 @@ export function InventarioView() {
       {formOpen && (
         <ProductoForm
           producto={editando}
+          categoriasExistentes={categorias}
           onClose={() => setFormOpen(false)}
           onSaved={reload}
         />
