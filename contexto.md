@@ -17,14 +17,17 @@ Estudiante de Ingeniería de Sistemas en la Pontificia Universidad Javeriana, Bo
 ## Importación por avión (además de barco)
 Algunas referencias (no solo chaquetas) también pueden traerse por avión en vez de barco. El
 cálculo de nacionalización es distinto y más detallado:
-- CIF = costo de la mercancía + seguro + flete aéreo.
-- Arancel: un % que varía por referencia específica (ejemplos reales: 5%, 10%, 50% — no es un
-  número fijo del negocio, cada producto tiene el suyo), aplicado sobre el CIF.
+- CIF = costo de la mercancía + seguro + flete aéreo, de **todo el envío/caja**, no de una sola
+  referencia.
+- Arancel: un % que varía de una compra a otra (ejemplos reales: 5%, 10%, 50%), pero dentro de un
+  mismo envío es un solo porcentaje que se calcula una sola vez sobre el CIF de toda la caja — no es
+  un dato fijo de una referencia ni se calcula por separado para cada producto que venga en la
+  misma caja.
 - IVA de nacionalización: 19% sobre (CIF + arancel).
 - Tarifa aérea: un cargo fijo adicional del envío, típicamente alrededor de 130,000 COP.
 Esto es contexto de cómo funciona el costeo real del negocio — el sistema ya lo implementa como
-opción "Avión" al registrar un lote (alternativa al costeo por barco), con el arancel guardado por
-referencia porque no es el mismo para todos los productos.
+opción "Avión" al registrar un lote (alternativa al costeo por barco), con el arancel como un dato
+del lote (envío), no de la referencia.
 
 ## Cómo reabastece (importante para el costeo)
 Cuando se le acaba el stock de una referencia, Xamu hace un pedido nuevo a China — no es un costo
@@ -32,8 +35,8 @@ fijo que se paga una sola vez: el costo de la mercancía y el flete varían seg�
 vez. La publicidad normalmente NO se vuelve a pagar en cada reabastecimiento (es opcional). Además,
 **un mismo envío casi nunca es de una sola referencia**: por ejemplo, una caja por avión puede traer
 4 referencias distintas de Jellycat a la vez, o una caja puede traer 13 unidades repartidas entre 5
-referencias. El flete/seguro/tarifa de ese envío son del envío completo, no de una sola referencia —
-se reparten entre todas las que vinieron ahí. El sistema modela esto como "lotes" (un envío, con sus
+referencias. El flete/seguro/tarifa/arancel de ese envío son del envío completo, no de una sola
+referencia — se reparten entre todas las que vinieron ahí. El sistema modela esto como "lotes" (un envío, con sus
 costos compartidos) que contienen varias "líneas" (una por referencia, con su propio costo de
 mercancía y unidades); ver la nota de esquema en `CLAUDE.md`.
 

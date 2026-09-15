@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, type FormEvent } from "react";
-import { Button, Field, Input, Select, Sheet, ToggleGroup } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, Select, Sheet, ToggleGroup } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
 import {
   costoPromedioPonderado,
@@ -28,7 +28,6 @@ type Item = {
   nombreNuevo: string;
   categoriaNueva: string;
   precioVentaNueva: string;
-  arancelPctNueva: string;
   costoMercancia: string;
   unidades: string;
   publicidad: string;
@@ -42,7 +41,6 @@ function nuevoItem(hayExistentes: boolean): Item {
     nombreNuevo: "",
     categoriaNueva: "",
     precioVentaNueva: "",
-    arancelPctNueva: "0",
     costoMercancia: "",
     unidades: "",
     publicidad: "",
@@ -64,6 +62,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
   const [fleteTotal, setFleteTotal] = useState("");
   const [seguroTotal, setSeguroTotal] = useState("");
   const [tarifaAvionTotal, setTarifaAvionTotal] = useState("");
+  const [arancelPct, setArancelPct] = useState("0");
   const [notas, setNotas] = useState("");
   const [items, setItems] = useState<Item[]>([nuevoItem(hayExistentes)]);
   const [saving, setSaving] = useState(false);
@@ -88,11 +87,11 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
     [items],
   );
 
-  function arancelPctDe(item: Item): number {
-    if (item.modo === "nueva") return num(item.arancelPctNueva);
-    return productos.find((p) => p.id === item.productoId)?.arancel_pct ?? 0;
-  }
-
+  // El arancel es del envío completo (se calcula una sola vez sobre el CIF de
+  // toda la caja), no de una referencia — por eso es un solo valor del lote,
+  // no un campo por línea. Aun así, cada línea paga arancel solo sobre SU
+  // propio CIF (mercancía propia + su parte prorrateada de seguro/flete), lo
+  // que en conjunto da el mismo total que calcularlo una vez para toda la caja.
   function calcularLinea(item: Item) {
     const unidades = num(item.unidades);
     const fleteAsignado = prorratear(num(fleteTotal), unidades, unidadesTotalLote);
@@ -104,7 +103,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
             alibaba: num(item.costoMercancia),
             seguro: seguroAsignado,
             flete: fleteAsignado,
-            arancelPct: arancelPctDe(item),
+            arancelPct: num(arancelPct),
             tarifaAvion: tarifaAsignada,
             publicidad: num(item.publicidad),
             unidades,
@@ -167,7 +166,6 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
         .insert({
           nombre: it.nombreNuevo.trim(),
           categoria: it.categoriaNueva.trim(),
-          arancel_pct: num(it.arancelPctNueva),
           precio_venta: num(it.precioVentaNueva),
           umbral_stock_bajo: 3,
           stock: 0,
@@ -193,6 +191,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
         flete_total: num(fleteTotal),
         seguro_total: metodo === "avion" ? num(seguroTotal) : 0,
         tarifa_avion_total: metodo === "avion" ? num(tarifaAvionTotal) : 0,
+        arancel_pct: metodo === "avion" ? num(arancelPct) : 0,
         notas: notas.trim() || null,
       })
       .select("id")
@@ -251,8 +250,8 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
     <Sheet title="Nuevo lote" onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <p className="text-sm text-ink-muted">
-          Un lote es un envío/compra real. Si trae varias referencias, el flete/seguro/tarifa se
-          reparte entre ellas según sus unidades.
+          Un lote es un envío/compra real. Si trae varias referencias, el flete/seguro/tarifa/arancel
+          se reparte entre ellas según sus unidades.
         </p>
 
         <Field label="Fecha" htmlFor="fecha">
@@ -273,32 +272,32 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Flete total del envío" htmlFor="fleteTotal">
-            <Input
-              id="fleteTotal"
-              inputMode="decimal"
-              value={fleteTotal}
-              onChange={(e) => setFleteTotal(e.target.value)}
-              placeholder="0"
-            />
+            <MoneyInput id="fleteTotal" value={fleteTotal} onChange={setFleteTotal} placeholder="0" />
           </Field>
           {metodo === "avion" && (
             <>
               <Field label="Seguro total del envío" htmlFor="seguroTotal">
-                <Input
-                  id="seguroTotal"
-                  inputMode="decimal"
-                  value={seguroTotal}
-                  onChange={(e) => setSeguroTotal(e.target.value)}
-                  placeholder="0"
-                />
+                <MoneyInput id="seguroTotal" value={seguroTotal} onChange={setSeguroTotal} placeholder="0" />
               </Field>
               <Field label="Tarifa aérea total" htmlFor="tarifaAvionTotal">
-                <Input
+                <MoneyInput
                   id="tarifaAvionTotal"
-                  inputMode="decimal"
                   value={tarifaAvionTotal}
-                  onChange={(e) => setTarifaAvionTotal(e.target.value)}
-                  placeholder="Ej. 130000"
+                  onChange={setTarifaAvionTotal}
+                  placeholder="Ej. 130.000"
+                />
+              </Field>
+              <Field
+                label="Arancel de este envío (%)"
+                htmlFor="arancelPct"
+                hint="Se calcula una sola vez sobre el CIF de toda la caja (mercancía + seguro + flete de todas las líneas), no por referencia."
+              >
+                <Input
+                  id="arancelPct"
+                  inputMode="decimal"
+                  value={arancelPct}
+                  onChange={(e) => setArancelPct(e.target.value)}
+                  placeholder="Ej. 10"
                 />
               </Field>
             </>
@@ -349,65 +348,46 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
                     </Select>
                   </Field>
                 ) : (
-                  <>
-                    <div className="grid grid-cols-2 gap-3">
-                      <Field label="Nombre" htmlFor={`nombre-${item.key}`}>
-                        <Input
-                          id={`nombre-${item.key}`}
-                          value={item.nombreNuevo}
-                          onChange={(e) => actualizarItem(item.key, { nombreNuevo: e.target.value })}
-                          placeholder="Ej. Jellycat Popcorn"
-                        />
-                      </Field>
-                      <Field label="Categoría" htmlFor={`categoria-${item.key}`}>
-                        <Input
-                          id={`categoria-${item.key}`}
-                          list="categorias-existentes-lote"
-                          value={item.categoriaNueva}
-                          onChange={(e) => actualizarItem(item.key, { categoriaNueva: e.target.value })}
-                          placeholder="Ej. jellycat"
-                        />
-                        <datalist id="categorias-existentes-lote">
-                          {categoriasExistentes.map((c) => (
-                            <option key={c} value={c} />
-                          ))}
-                        </datalist>
-                      </Field>
-                      <Field label="Precio de venta" htmlFor={`precio-${item.key}`}>
-                        <Input
-                          id={`precio-${item.key}`}
-                          inputMode="decimal"
-                          value={item.precioVentaNueva}
-                          onChange={(e) => actualizarItem(item.key, { precioVentaNueva: e.target.value })}
-                          placeholder="0"
-                        />
-                      </Field>
-                      {metodo === "avion" && (
-                        <Field
-                          label="Arancel (%)"
-                          htmlFor={`arancel-${item.key}`}
-                          hint="Propio de esta referencia."
-                        >
-                          <Input
-                            id={`arancel-${item.key}`}
-                            inputMode="decimal"
-                            value={item.arancelPctNueva}
-                            onChange={(e) => actualizarItem(item.key, { arancelPctNueva: e.target.value })}
-                            placeholder="Ej. 10"
-                          />
-                        </Field>
-                      )}
-                    </div>
-                  </>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Nombre" htmlFor={`nombre-${item.key}`}>
+                      <Input
+                        id={`nombre-${item.key}`}
+                        value={item.nombreNuevo}
+                        onChange={(e) => actualizarItem(item.key, { nombreNuevo: e.target.value })}
+                        placeholder="Ej. Jellycat Popcorn"
+                      />
+                    </Field>
+                    <Field label="Categoría" htmlFor={`categoria-${item.key}`}>
+                      <Input
+                        id={`categoria-${item.key}`}
+                        list="categorias-existentes-lote"
+                        value={item.categoriaNueva}
+                        onChange={(e) => actualizarItem(item.key, { categoriaNueva: e.target.value })}
+                        placeholder="Ej. jellycat"
+                      />
+                      <datalist id="categorias-existentes-lote">
+                        {categoriasExistentes.map((c) => (
+                          <option key={c} value={c} />
+                        ))}
+                      </datalist>
+                    </Field>
+                    <Field label="Precio de venta" htmlFor={`precio-${item.key}`}>
+                      <MoneyInput
+                        id={`precio-${item.key}`}
+                        value={item.precioVentaNueva}
+                        onChange={(v) => actualizarItem(item.key, { precioVentaNueva: v })}
+                        placeholder="0"
+                      />
+                    </Field>
+                  </div>
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Costo de mercancía" htmlFor={`mercancia-${item.key}`}>
-                    <Input
+                    <MoneyInput
                       id={`mercancia-${item.key}`}
-                      inputMode="decimal"
                       value={item.costoMercancia}
-                      onChange={(e) => actualizarItem(item.key, { costoMercancia: e.target.value })}
+                      onChange={(v) => actualizarItem(item.key, { costoMercancia: v })}
                       placeholder="0"
                     />
                   </Field>
@@ -425,11 +405,10 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
                     htmlFor={`publicidad-${item.key}`}
                     hint="Solo si vas a promocionar este lote — no es obligatorio en cada reabastecimiento."
                   >
-                    <Input
+                    <MoneyInput
                       id={`publicidad-${item.key}`}
-                      inputMode="decimal"
                       value={item.publicidad}
-                      onChange={(e) => actualizarItem(item.key, { publicidad: e.target.value })}
+                      onChange={(v) => actualizarItem(item.key, { publicidad: v })}
                       placeholder="0"
                     />
                   </Field>

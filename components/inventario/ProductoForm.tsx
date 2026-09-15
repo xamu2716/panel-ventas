@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Button, Field, Input, Sheet } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, Sheet } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
 import type { Producto } from "@/lib/types";
 
@@ -13,10 +13,11 @@ type Props = {
 };
 
 /**
- * Solo identidad de la referencia (nombre, categoría, arancel fijo, precio,
- * umbral de stock bajo). El costo real y el stock ya NO se cargan aquí: salen
- * de registrar un lote (ver LoteForm), que puede traer varias referencias a la
- * vez y reparte flete/seguro/tarifa entre ellas. Los campos de abajo en modo
+ * Solo identidad de la referencia (nombre, categoría, precio, umbral de stock
+ * bajo). El costo real, el stock y el arancel (que es del envío, no de la
+ * referencia) ya NO se cargan aquí: salen de registrar un lote (ver
+ * LoteForm), que puede traer varias referencias a la vez y reparte
+ * flete/seguro/tarifa/arancel entre ellas. Los campos de abajo en modo
  * edición son solo un ajuste manual puntual, no el flujo normal.
  */
 export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved }: Props) {
@@ -24,7 +25,6 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
 
   const [nombre, setNombre] = useState(producto?.nombre ?? "");
   const [categoria, setCategoria] = useState(producto?.categoria ?? "");
-  const [arancelPct, setArancelPct] = useState(String(producto?.arancel_pct ?? "0"));
   const [precioVenta, setPrecioVenta] = useState(String(producto?.precio_venta ?? ""));
   const [umbral, setUmbral] = useState(String(producto?.umbral_stock_bajo ?? "3"));
   const [stock, setStock] = useState(String(producto?.stock ?? ""));
@@ -55,7 +55,6 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
     const payload = {
       nombre: nombre.trim(),
       categoria: categoria.trim(),
-      arancel_pct: num(arancelPct),
       precio_venta: num(precioVenta),
       umbral_stock_bajo: num(umbral),
       ...(editando
@@ -109,29 +108,8 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
           </datalist>
         </Field>
 
-        <Field
-          label="Arancel de esta referencia (%)"
-          htmlFor="arancelPct"
-          hint="Solo aplica si alguna vez la traes por avión. Queda guardado en la referencia, no hay que repetirlo en cada lote."
-        >
-          <Input
-            id="arancelPct"
-            inputMode="decimal"
-            value={arancelPct}
-            onChange={(e) => setArancelPct(e.target.value)}
-            placeholder="Ej. 10"
-          />
-        </Field>
-
         <Field label="Precio de venta (por unidad)" htmlFor="precioVenta">
-          <Input
-            id="precioVenta"
-            inputMode="decimal"
-            value={precioVenta}
-            onChange={(e) => setPrecioVenta(e.target.value)}
-            placeholder="0"
-            required
-          />
+          <MoneyInput id="precioVenta" value={precioVenta} onChange={setPrecioVenta} placeholder="0" required />
         </Field>
 
         <Field label="Aviso de stock bajo cuando queden" htmlFor="umbral">
@@ -163,12 +141,7 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
               htmlFor="costoUnitario"
               hint="El costo normal es el promedio ponderado de los lotes recibidos. Usa esto solo para un ajuste puntual."
             >
-              <Input
-                id="costoUnitario"
-                inputMode="decimal"
-                value={costoUnitario}
-                onChange={(e) => setCostoUnitario(e.target.value)}
-              />
+              <MoneyInput id="costoUnitario" value={costoUnitario} onChange={setCostoUnitario} />
             </Field>
           </div>
         ) : (

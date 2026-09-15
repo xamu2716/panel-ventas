@@ -60,6 +60,9 @@ export function LotesHistorial() {
                     Tarifa aérea:{" "}
                     <span className="tabular font-medium text-ink">{formatCOP(lote.tarifa_avion_total)}</span>
                   </span>
+                  <span>
+                    Arancel: <span className="tabular font-medium text-ink">{lote.arancel_pct}%</span>
+                  </span>
                 </>
               )}
             </div>
