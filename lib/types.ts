@@ -1,23 +1,52 @@
 export type MetodoImportacion = "barco" | "avion";
 
+/**
+ * Identidad de una referencia + agregados vivos. El costeo real (de dónde sale
+ * costo_unitario) vive en `Lote`/`LoteItem`: cada reabastecimiento es una compra
+ * nueva con sus propios costos, y varias referencias pueden compartir un mismo
+ * lote (mismo envío). `costo_unitario` es el promedio ponderado acumulado de
+ * todos los lotes recibidos hasta ahora (editable a mano como ajuste puntual).
+ */
 export type Producto = {
   id: string;
   nombre: string;
   categoria: string;
-  metodo_importacion: MetodoImportacion;
-  costo_lote_alibaba: number;
-  flete_lote: number;
-  seguro: number;
   arancel_pct: number;
-  tarifa_avion: number;
-  publicidad_lote: number;
-  unidades_lote: number;
   costo_unitario: number;
   precio_venta: number;
   stock: number;
   umbral_stock_bajo: number;
   created_at: string;
   updated_at: string;
+};
+
+/** Un envío/compra real: costos compartidos entre todas sus líneas (lote_items). */
+export type Lote = {
+  id: string;
+  fecha: string;
+  metodo_importacion: MetodoImportacion;
+  flete_total: number;
+  seguro_total: number;
+  tarifa_avion_total: number;
+  notas: string | null;
+  created_at: string;
+};
+
+/** Una línea de un lote: una referencia, sus unidades y su costo resultante ya calculado. */
+export type LoteItem = {
+  id: string;
+  lote_id: string;
+  producto_id: string;
+  costo_mercancia: number;
+  unidades: number;
+  publicidad: number;
+  costo_unitario_resultante: number;
+  created_at: string;
+};
+
+/** Lote con sus líneas incluidas (join de Supabase), cada línea con el nombre del producto. */
+export type LoteConItems = Lote & {
+  lote_items: (LoteItem & { producto: Pick<Producto, "id" | "nombre"> | null })[];
 };
 
 export type TipoEntrega = "recoge" | "domicilio";

@@ -6,6 +6,13 @@ import { Badge } from "@/components/ui";
 import { CategoriaBadge } from "@/components/CategoriaBadge";
 import { IconAlert, IconPencil, IconTrash } from "@/components/icons";
 
+/**
+ * Ya no muestra un chip fijo de método de importación (barco/avión): eso ahora
+ * es un dato del lote con el que se trajo cada reabastecimiento, no de la
+ * referencia — la misma referencia puede haber llegado por distintos métodos
+ * en distintos lotes. Ver Historial de lotes para el detalle por compra.
+ */
+
 export function ProductoCard({
   producto,
   categoriasOrdenadas,
@@ -28,9 +35,6 @@ export function ProductoCard({
           <p className="font-semibold text-ink">{producto.nombre}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1.5">
             <CategoriaBadge categoria={producto.categoria} categoriasOrdenadas={categoriasOrdenadas} />
-            <Badge tone="neutral">
-              {producto.metodo_importacion === "avion" ? "Avión" : "Barco"}
-            </Badge>
           </div>
         </div>
         <div className="flex gap-1">
