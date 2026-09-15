@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
-import type { GastoPublicidad, PedidoConProducto, Producto } from "@/lib/types";
+import type { GastoPublicidad, LoteItem, PedidoConProducto, Producto } from "@/lib/types";
 import {
   categoriasDisponibles,
   computeKpis,
@@ -46,6 +46,10 @@ async function fetchGastos() {
   return supabase.from("gastos_publicidad").select("*");
 }
 
+async function fetchLoteItems() {
+  return supabase.from("lote_items").select("*");
+}
+
 const TODAS = "todas" as const;
 
 export function ResumenView() {
@@ -58,8 +62,9 @@ export function ResumenView() {
     "gastos_publicidad",
     fetchGastos,
   );
+  const { data: loteItems, loading: l4 } = useRealtimeQuery<LoteItem>("lote_items", fetchLoteItems);
 
-  const loading = l1 || l2 || l3;
+  const loading = l1 || l2 || l3 || l4;
   const [categoriaSel, setCategoriaSel] = useState<string>(TODAS);
 
   const categorias = useMemo(() => categoriasDisponibles(productos), [productos]);
@@ -76,7 +81,7 @@ export function ResumenView() {
     [pedidos, categoriaSel],
   );
 
-  const kpis = computeKpis(pedidosFiltrados, productosFiltrados, gastos);
+  const kpis = computeKpis(pedidosFiltrados, productosFiltrados, gastos, loteItems);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:py-8">

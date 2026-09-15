@@ -69,41 +69,39 @@ export function costoUnitarioLoteAvion({
   return (nacionalizado + tarifaAvion + publicidad) / unidades;
 }
 
-export type ProductoParaCosteo = {
-  metodo_importacion: "barco" | "avion";
-  costo_lote_alibaba: number;
-  flete_lote: number;
-  seguro: number;
-  arancel_pct: number;
-  tarifa_avion: number;
-  publicidad_lote: number;
-  unidades_lote: number;
+/**
+ * Reparte un costo compartido de un lote (flete, seguro, tarifa aérea) entre las
+ * unidades de una línea específica, proporcional a cuántas unidades de las del
+ * lote completo son de esa línea. Es la base de "un envío trae varias
+ * referencias y el flete no es solo de una".
+ */
+export function prorratear(total: number, unidadesLinea: number, unidadesTotalLote: number): number {
+  if (!unidadesTotalLote || unidadesTotalLote <= 0) return 0;
+  return (total * unidadesLinea) / unidadesTotalLote;
+}
+
+export type PromedioPonderadoInput = {
+  stockActual: number;
+  costoActual: number;
+  unidadesNuevas: number;
+  costoUnitarioNuevo: number;
 };
 
 /**
- * Recalcula el costo unitario "de fábrica" de un producto (sin el override
- * manual) a partir de sus campos de lote guardados, según su método de
- * importación. Útil para mostrar el desglose o para la calculadora de
- * Inventario al abrir una referencia existente para editar.
+ * Costo unitario promedio ponderado (moving average) al reabastecer: mezcla lo
+ * que ya había en stock a su costo actual con lo que entra a su propio costo.
+ * Con stockActual = 0 da exactamente costoUnitarioNuevo (no arrastra nada del
+ * costo anterior, correcto para "se quedó sin stock y se vuelve a surtir").
  */
-export function costoUnitarioProducto(p: ProductoParaCosteo): number {
-  if (p.metodo_importacion === "avion") {
-    return costoUnitarioLoteAvion({
-      alibaba: p.costo_lote_alibaba,
-      seguro: p.seguro,
-      flete: p.flete_lote,
-      arancelPct: p.arancel_pct,
-      tarifaAvion: p.tarifa_avion,
-      publicidad: p.publicidad_lote,
-      unidades: p.unidades_lote,
-    });
-  }
-  return costoUnitarioLote({
-    alibaba: p.costo_lote_alibaba,
-    flete: p.flete_lote,
-    publicidad: p.publicidad_lote,
-    unidades: p.unidades_lote,
-  });
+export function costoPromedioPonderado({
+  stockActual,
+  costoActual,
+  unidadesNuevas,
+  costoUnitarioNuevo,
+}: PromedioPonderadoInput): number {
+  const unidadesTotales = stockActual + unidadesNuevas;
+  if (unidadesTotales <= 0) return 0;
+  return (stockActual * costoActual + unidadesNuevas * costoUnitarioNuevo) / unidadesTotales;
 }
 
 export function gananciaUnidad(precioVenta: number, costoUnitario: number): number {

@@ -1,4 +1,11 @@
-import { ESTADOS, ESTADO_LABEL, type GastoPublicidad, type PedidoConProducto, type Producto } from "./types";
+import {
+  ESTADOS,
+  ESTADO_LABEL,
+  type GastoPublicidad,
+  type LoteItem,
+  type PedidoConProducto,
+  type Producto,
+} from "./types";
 import { gananciaPedido, margenPct, totalPedido } from "./calc";
 
 /**
@@ -11,6 +18,7 @@ export function computeKpis(
   pedidos: PedidoConProducto[],
   productos: Producto[],
   gastos: GastoPublicidad[],
+  loteItems: LoteItem[],
 ) {
   const entregados = pedidos.filter((p) => p.estado === "entregado");
   const pendientes = pedidos.filter((p) => p.estado !== "entregado");
@@ -33,7 +41,10 @@ export function computeKpis(
     0,
   );
   const stockValorado = productos.reduce((acc, p) => acc + p.stock * p.costo_unitario, 0);
-  const publicidadLotes = productos.reduce((acc, p) => acc + p.publicidad_lote, 0);
+  const productoIds = new Set(productos.map((p) => p.id));
+  const publicidadLotes = loteItems
+    .filter((li) => productoIds.has(li.producto_id))
+    .reduce((acc, li) => acc + li.publicidad, 0);
   // Informativo: publicidad de lotes (ya en el costo) + publicidad extra. No se
   // vuelve a restar de la ganancia neta, solo se muestra como referencia.
   const gastoPublicidadTotal = publicidadLotes + gastoExtra;

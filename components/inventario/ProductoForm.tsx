@@ -1,18 +1,9 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
-import { Button, Field, Input, Sheet, ToggleGroup } from "@/components/ui";
+import { useState, type FormEvent } from "react";
+import { Button, Field, Input, Sheet } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
-import {
-  cifLote,
-  costoUnitarioLote,
-  costoUnitarioLoteAvion,
-  formatCOP,
-  gananciaUnidad,
-  IVA_NACIONALIZACION_PCT,
-  margenPct,
-} from "@/lib/calc";
-import type { MetodoImportacion, Producto } from "@/lib/types";
+import type { Producto } from "@/lib/types";
 
 type Props = {
   producto?: Producto;
@@ -21,65 +12,27 @@ type Props = {
   onSaved: () => void;
 };
 
+/**
+ * Solo identidad de la referencia (nombre, categoría, arancel fijo, precio,
+ * umbral de stock bajo). El costo real y el stock ya NO se cargan aquí: salen
+ * de registrar un lote (ver LoteForm), que puede traer varias referencias a la
+ * vez y reparte flete/seguro/tarifa entre ellas. Los campos de abajo en modo
+ * edición son solo un ajuste manual puntual, no el flujo normal.
+ */
 export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved }: Props) {
   const editando = !!producto;
 
   const [nombre, setNombre] = useState(producto?.nombre ?? "");
   const [categoria, setCategoria] = useState(producto?.categoria ?? "");
-  const [metodo, setMetodo] = useState<MetodoImportacion>(producto?.metodo_importacion ?? "barco");
-
-  const [alibaba, setAlibaba] = useState(String(producto?.costo_lote_alibaba ?? ""));
-  const [flete, setFlete] = useState(String(producto?.flete_lote ?? ""));
-  const [seguro, setSeguro] = useState(String(producto?.seguro ?? ""));
-  const [arancelPct, setArancelPct] = useState(String(producto?.arancel_pct ?? ""));
-  const [tarifaAvion, setTarifaAvion] = useState(String(producto?.tarifa_avion ?? ""));
-  const [publicidad, setPublicidad] = useState(String(producto?.publicidad_lote ?? ""));
-  const [unidadesLote, setUnidadesLote] = useState(String(producto?.unidades_lote ?? ""));
-
-  const [costoUnitario, setCostoUnitario] = useState(String(producto?.costo_unitario ?? ""));
-  const [costoTocado, setCostoTocado] = useState(false);
+  const [arancelPct, setArancelPct] = useState(String(producto?.arancel_pct ?? "0"));
   const [precioVenta, setPrecioVenta] = useState(String(producto?.precio_venta ?? ""));
-  const [stock, setStock] = useState(String(producto?.stock ?? ""));
   const [umbral, setUmbral] = useState(String(producto?.umbral_stock_bajo ?? "3"));
+  const [stock, setStock] = useState(String(producto?.stock ?? ""));
+  const [costoUnitario, setCostoUnitario] = useState(String(producto?.costo_unitario ?? ""));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s));
-
-  const cif = useMemo(
-    () => cifLote({ alibaba: num(alibaba), seguro: num(seguro), flete: num(flete) }),
-    [alibaba, seguro, flete],
-  );
-  const montoArancel = cif * (num(arancelPct) / 100);
-
-  const costoCalculado = useMemo(() => {
-    if (metodo === "avion") {
-      return costoUnitarioLoteAvion({
-        alibaba: num(alibaba),
-        seguro: num(seguro),
-        flete: num(flete),
-        arancelPct: num(arancelPct),
-        tarifaAvion: num(tarifaAvion),
-        publicidad: num(publicidad),
-        unidades: num(unidadesLote),
-      });
-    }
-    return costoUnitarioLote({
-      alibaba: num(alibaba),
-      flete: num(flete),
-      publicidad: num(publicidad),
-      unidades: num(unidadesLote),
-    });
-  }, [metodo, alibaba, seguro, flete, arancelPct, tarifaAvion, publicidad, unidadesLote]);
-
-  const costoEfectivo = costoTocado ? num(costoUnitario) : costoCalculado;
-  const ganancia = gananciaUnidad(num(precioVenta), costoEfectivo);
-  const margen = margenPct(num(precioVenta), costoEfectivo);
-
-  function recalcularCosto() {
-    setCostoTocado(false);
-    setCostoUnitario(String(costoCalculado));
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -93,10 +46,6 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
       setError("Escribe la categoría del producto (ej. chaqueta, jellycat).");
       return;
     }
-    if (num(unidadesLote) <= 0) {
-      setError("Las unidades del lote deben ser al menos 1.");
-      return;
-    }
     if (num(precioVenta) <= 0) {
       setError("El precio de venta debe ser mayor a 0.");
       return;
@@ -106,18 +55,12 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
     const payload = {
       nombre: nombre.trim(),
       categoria: categoria.trim(),
-      metodo_importacion: metodo,
-      costo_lote_alibaba: num(alibaba),
-      flete_lote: num(flete),
-      seguro: metodo === "avion" ? num(seguro) : 0,
-      arancel_pct: metodo === "avion" ? num(arancelPct) : 0,
-      tarifa_avion: metodo === "avion" ? num(tarifaAvion) : 0,
-      publicidad_lote: num(publicidad),
-      unidades_lote: num(unidadesLote),
-      costo_unitario: costoEfectivo,
+      arancel_pct: num(arancelPct),
       precio_venta: num(precioVenta),
       umbral_stock_bajo: num(umbral),
-      ...(editando ? { stock: num(stock) } : { stock: num(unidadesLote) }),
+      ...(editando
+        ? { stock: num(stock), costo_unitario: num(costoUnitario) }
+        : { stock: 0, costo_unitario: 0 }),
     };
 
     const { error } = editando
@@ -166,152 +109,19 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
           </datalist>
         </Field>
 
-        <Field label="Método de importación" htmlFor="metodo">
-          <ToggleGroup
-            name="Método de importación"
-            value={metodo}
-            onChange={setMetodo}
-            options={[
-              { value: "barco", label: "Barco" },
-              { value: "avion", label: "Avión" },
-            ]}
+        <Field
+          label="Arancel de esta referencia (%)"
+          htmlFor="arancelPct"
+          hint="Solo aplica si alguna vez la traes por avión. Queda guardado en la referencia, no hay que repetirlo en cada lote."
+        >
+          <Input
+            id="arancelPct"
+            inputMode="decimal"
+            value={arancelPct}
+            onChange={(e) => setArancelPct(e.target.value)}
+            placeholder="Ej. 10"
           />
         </Field>
-
-        <div className="rounded-md border border-line bg-paper/60 p-4">
-          <p className="mb-3 text-sm font-semibold text-ink">Costo del lote</p>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Costo de la mercancía" htmlFor="alibaba">
-              <Input
-                id="alibaba"
-                inputMode="decimal"
-                value={alibaba}
-                onChange={(e) => setAlibaba(e.target.value)}
-                placeholder="0"
-              />
-            </Field>
-            <Field label="Flete" htmlFor="flete">
-              <Input
-                id="flete"
-                inputMode="decimal"
-                value={flete}
-                onChange={(e) => setFlete(e.target.value)}
-                placeholder="0"
-              />
-            </Field>
-
-            {metodo === "avion" && (
-              <>
-                <Field label="Seguro" htmlFor="seguro">
-                  <Input
-                    id="seguro"
-                    inputMode="decimal"
-                    value={seguro}
-                    onChange={(e) => setSeguro(e.target.value)}
-                    placeholder="0"
-                  />
-                </Field>
-                <Field
-                  label="Arancel de esta referencia"
-                  htmlFor="arancelPct"
-                  hint="% sobre el CIF (costo+seguro+flete). Varía por producto: 5%, 10%, 50%…"
-                >
-                  <Input
-                    id="arancelPct"
-                    inputMode="decimal"
-                    value={arancelPct}
-                    onChange={(e) => setArancelPct(e.target.value)}
-                    placeholder="Ej. 10"
-                  />
-                </Field>
-                <Field
-                  label="Tarifa aérea"
-                  htmlFor="tarifaAvion"
-                  hint="Cargo fijo del envío por avión (típico ~130.000)."
-                >
-                  <Input
-                    id="tarifaAvion"
-                    inputMode="decimal"
-                    value={tarifaAvion}
-                    onChange={(e) => setTarifaAvion(e.target.value)}
-                    placeholder="Ej. 130000"
-                  />
-                </Field>
-              </>
-            )}
-
-            <Field label="Publicidad del lote" htmlFor="publicidad">
-              <Input
-                id="publicidad"
-                inputMode="decimal"
-                value={publicidad}
-                onChange={(e) => setPublicidad(e.target.value)}
-                placeholder="0"
-              />
-            </Field>
-            <Field label="Unidades del lote" htmlFor="unidadesLote">
-              <Input
-                id="unidadesLote"
-                inputMode="numeric"
-                value={unidadesLote}
-                onChange={(e) => setUnidadesLote(e.target.value)}
-                placeholder="Ej. 20"
-                required
-              />
-            </Field>
-          </div>
-
-          {metodo === "avion" && (
-            <div className="mt-3 flex flex-col gap-1 rounded-md border border-line bg-surface px-3 py-2.5 text-xs text-ink-muted">
-              <p>
-                CIF (costo + seguro + flete): <span className="tabular font-medium text-ink">{formatCOP(cif)}</span>
-              </p>
-              <p>
-                Arancel ({num(arancelPct) || 0}% del CIF):{" "}
-                <span className="tabular font-medium text-ink">{formatCOP(montoArancel)}</span>
-              </p>
-              <p>
-                Nacionalizado con IVA ({IVA_NACIONALIZACION_PCT}% sobre CIF+arancel):{" "}
-                <span className="tabular font-medium text-ink">
-                  {formatCOP((cif + montoArancel) * (1 + IVA_NACIONALIZACION_PCT / 100))}
-                </span>
-              </p>
-            </div>
-          )}
-
-          <div className="mt-4 flex items-end justify-between gap-3 rounded-md bg-accent-soft/50 px-3 py-3">
-            <div>
-              <p className="text-xs text-ink-muted">Costo unitario resultante</p>
-              <p className="font-display text-xl text-accent-strong">
-                {formatCOP(costoTocado ? num(costoUnitario) : costoCalculado)}
-              </p>
-            </div>
-            {costoTocado && (
-              <button
-                type="button"
-                onClick={recalcularCosto}
-                className="text-xs font-semibold text-route-strong underline underline-offset-2"
-              >
-                Recalcular desde el lote
-              </button>
-            )}
-          </div>
-          <Field
-            label="Ajustar costo unitario manualmente (opcional)"
-            htmlFor="costoUnitario"
-            hint="Se calcula solo desde el lote de arriba; solo edítalo si necesitas un ajuste puntual."
-          >
-            <Input
-              id="costoUnitario"
-              inputMode="decimal"
-              value={costoTocado ? costoUnitario : String(Math.round(costoCalculado))}
-              onChange={(e) => {
-                setCostoTocado(true);
-                setCostoUnitario(e.target.value);
-              }}
-            />
-          </Field>
-        </div>
 
         <Field label="Precio de venta (por unidad)" htmlFor="precioVenta">
           <Input
@@ -324,38 +134,6 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3 rounded-md border border-line px-4 py-3">
-          <div>
-            <p className="text-xs text-ink-muted">Ganancia / unidad</p>
-            <p
-              className={`font-display text-lg ${ganancia < 0 ? "text-alert" : "text-settled"}`}
-            >
-              {formatCOP(ganancia)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-ink-muted">Margen</p>
-            <p className={`font-display text-lg ${margen < 0 ? "text-alert" : "text-settled"}`}>
-              {margen.toFixed(1)}%
-            </p>
-          </div>
-        </div>
-
-        {editando && (
-          <Field
-            label="Stock actual"
-            htmlFor="stock"
-            hint="Ajusta aquí si necesitas corregir el stock a mano."
-          >
-            <Input
-              id="stock"
-              inputMode="numeric"
-              value={stock}
-              onChange={(e) => setStock(e.target.value)}
-            />
-          </Field>
-        )}
-
         <Field label="Aviso de stock bajo cuando queden" htmlFor="umbral">
           <Input
             id="umbral"
@@ -364,6 +142,41 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
             onChange={(e) => setUmbral(e.target.value)}
           />
         </Field>
+
+        {editando ? (
+          <div className="flex flex-col gap-5 rounded-md border border-line bg-paper/60 p-4">
+            <p className="text-sm font-semibold text-ink">Ajuste manual (opcional)</p>
+            <Field
+              label="Stock actual"
+              htmlFor="stock"
+              hint="El stock normal sube al registrar un lote y baja al entregar un pedido. Usa esto solo para corregir un error puntual."
+            >
+              <Input
+                id="stock"
+                inputMode="numeric"
+                value={stock}
+                onChange={(e) => setStock(e.target.value)}
+              />
+            </Field>
+            <Field
+              label="Costo unitario"
+              htmlFor="costoUnitario"
+              hint="El costo normal es el promedio ponderado de los lotes recibidos. Usa esto solo para un ajuste puntual."
+            >
+              <Input
+                id="costoUnitario"
+                inputMode="decimal"
+                value={costoUnitario}
+                onChange={(e) => setCostoUnitario(e.target.value)}
+              />
+            </Field>
+          </div>
+        ) : (
+          <p className="rounded-md border border-line bg-paper/60 px-3 py-2.5 text-xs text-ink-muted">
+            Esta referencia se crea sin stock ni costo todavía — usa &quot;Nuevo lote&quot; después
+            para cargarle la primera compra.
+          </p>
+        )}
 
         {error && (
           <p role="alert" className="text-sm font-medium text-alert">

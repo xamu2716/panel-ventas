@@ -6,9 +6,11 @@ import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
 import type { Producto } from "@/lib/types";
 import { categoriasDisponibles } from "@/lib/metrics";
 import { Button, EmptyState } from "@/components/ui";
-import { IconPlus } from "@/components/icons";
+import { IconBox, IconPlus } from "@/components/icons";
 import { ProductoForm } from "./ProductoForm";
 import { ProductoCard } from "./ProductoCard";
+import { LoteForm } from "./LoteForm";
+import { LotesHistorial } from "./LotesHistorial";
 
 async function fetchProductos() {
   return supabase.from("productos").select("*").order("nombre", { ascending: true });
@@ -20,6 +22,7 @@ export function InventarioView() {
     fetchProductos,
   );
   const [formOpen, setFormOpen] = useState(false);
+  const [loteFormOpen, setLoteFormOpen] = useState(false);
   const [editando, setEditando] = useState<Producto | undefined>(undefined);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const categorias = useMemo(() => categoriasDisponibles(productos), [productos]);
@@ -41,7 +44,7 @@ export function InventarioView() {
     if (error) {
       setDeleteError(
         error.code === "23503"
-          ? `No se puede eliminar "${p.nombre}": tiene pedidos asociados.`
+          ? `No se puede eliminar "${p.nombre}": tiene pedidos o lotes asociados.`
           : error.message,
       );
       return;
@@ -51,14 +54,19 @@ export function InventarioView() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 md:py-8">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="font-display text-2xl text-ink">Inventario</h1>
-          <p className="text-sm text-ink-muted">Referencias, costo por lote y stock.</p>
+          <p className="text-sm text-ink-muted">Referencias, lotes de compra y stock.</p>
         </div>
-        <Button onClick={abrirNuevo}>
-          <IconPlus size={18} /> Nueva
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={abrirNuevo}>
+            <IconPlus size={18} /> Nueva referencia
+          </Button>
+          <Button onClick={() => setLoteFormOpen(true)}>
+            <IconBox size={18} /> Nuevo lote
+          </Button>
+        </div>
       </div>
 
       {deleteError && (
@@ -75,7 +83,7 @@ export function InventarioView() {
         ) : productos.length === 0 ? (
           <EmptyState
             title="Todavía no hay referencias"
-            hint="Crea la primera para poder cargar pedidos."
+            hint="Crea una referencia y después registra su primer lote para cargarle stock y costo."
           />
         ) : (
           <ul className="flex flex-col gap-3">
@@ -92,11 +100,25 @@ export function InventarioView() {
         )}
       </div>
 
+      <div className="mt-10">
+        <h2 className="mb-3 font-display text-xl text-ink">Historial de lotes</h2>
+        <LotesHistorial />
+      </div>
+
       {formOpen && (
         <ProductoForm
           producto={editando}
           categoriasExistentes={categorias}
           onClose={() => setFormOpen(false)}
+          onSaved={reload}
+        />
+      )}
+
+      {loteFormOpen && (
+        <LoteForm
+          productos={productos}
+          categoriasExistentes={categorias}
+          onClose={() => setLoteFormOpen(false)}
           onSaved={reload}
         />
       )}
