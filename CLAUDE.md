@@ -53,6 +53,8 @@ El repositorio ya existe y ya está clonado en esta carpeta; el dueño lo creó 
 
 **Despliegue a Vercel no depende de este orden.** El MCP de Vercel puede desplegar el proyecto directamente sin pasar por GitHub. Si el dueño no ha conectado el repositorio de GitHub a Vercel todavía, despliega igual usando el MCP de Vercel directo (sin necesidad de push) para que pueda ver y probar la URL en vivo mientras se termina de organizar el historial de git.
 
+**Estado actual del despliegue (ya conectado):** el repo de GitHub (`xamu2716/panel-ventas`) ya está conectado al proyecto de Vercel `panel-ventas` — cada `git push` a `main` dispara un deploy automático a producción, no hace falta desplegar a mano. La URL pública en uso es `https://panel-ventas-rosy.vercel.app` (dominio de producción asignado al proyecto; `https://panel-ventas-xamu2716.vercel.app` es el mismo proyecto pero por su alias de deployment autogenerado). Deployment Protection está en **"All Deployments"** (Vercel Authentication cubriendo también producción) — decisión deliberada del dueño: el panel no tiene login propio y maneja nombres/teléfonos/direcciones de clientes, así que esa capa de Vercel hace ese papel. Las variables de entorno de Supabase ya están configuradas en ese proyecto de Vercel.
+
 ## Manejo de credenciales — obligatorio desde el primer commit del proyecto
 - Todas las claves de Supabase (URL del proyecto y clave anónima/API) van en un archivo `.env.local` en la raíz del proyecto — NUNCA escritas directamente en el código fuente.
 - Crea un `.gitignore` desde el inicio del proyecto que excluya `.env`, `.env.local`, `.env*.local`, `node_modules/`, `.next/`, y cualquier otro archivo de configuración local o de build.
@@ -76,6 +78,8 @@ El repositorio ya existe y ya está clonado en esta carpeta; el dueño lo creó 
 
 ## Convenciones de commits
 Conventional commits, en inglés: `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`, `style:`, `test:`. Un commit por unidad de trabajo coherente, no un solo commit gigante al final.
+
+**No agregar la línea `Co-Authored-By: Claude ...`** al final de los mensajes de commit — el dueño prefiere que el historial quede a su nombre sin esa nota (ver `contexto.md`).
 
 ## Pruebas funcionales obligatorias — no solo que se vea bien, que FUNCIONE
 

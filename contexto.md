@@ -45,3 +45,4 @@ Cuando lleguen las chaquetas, Xamu espera un volumen de ventas alto y simultáne
 - No usar negrilla en el chat ni raya larga "—" en las respuestas de texto que Claude le da (esto es preferencia de conversación, no necesariamente del producto en sí).
 - Para talleres de código de la universidad prefiere trabajar guiado, paso a paso — pero este es un proyecto de negocio real que quiere entregado funcionando, no un ejercicio académico guiado.
 - Empezando a usar conventional commits (en inglés) en sus proyectos — si el trabajo con Claude Code incluye control de versiones, seguir ese estándar (feat:, fix:, chore:, etc.).
+- No incluir la línea `Co-Authored-By: Claude ...` al final de los mensajes de commit — prefiere que el historial quede a su nombre sin esa nota, en este y en sus demás proyectos.
