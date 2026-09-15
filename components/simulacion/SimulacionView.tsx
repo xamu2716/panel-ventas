@@ -230,6 +230,16 @@ export function SimulacionView() {
                   </tr>
                 </thead>
                 <tbody>
+                  <tr className="border-b border-line bg-paper/60">
+                    <td colSpan={2} className="px-4 py-2.5 font-medium text-ink-muted">
+                      Costo total de compra
+                    </td>
+                    {cantidades.map((cantidad) => (
+                      <td key={cantidad} className="tabular px-4 py-2.5 text-right font-medium text-ink-muted">
+                        {formatCOP(costo * cantidad)}
+                      </td>
+                    ))}
+                  </tr>
                   {precios.map((precio) => {
                     const margen = margenPct(precio, costo);
                     return (
@@ -243,16 +253,18 @@ export function SimulacionView() {
                           {margen.toFixed(1)}%
                         </td>
                         {cantidades.map((cantidad) => {
+                          const ingreso = totalPedido(precio, cantidad);
                           const ganancia = gananciaPedido(precio, costo, cantidad);
                           return (
-                            <td
-                              key={cantidad}
-                              className={`tabular px-4 py-2.5 text-right ${
-                                ganancia < 0 ? "text-alert" : "text-ink"
-                              }`}
-                              title={`Ingreso: ${formatCOP(totalPedido(precio, cantidad))}`}
-                            >
-                              {formatCOP(ganancia)}
+                            <td key={cantidad} className="px-4 py-2.5 text-right">
+                              <p className="tabular text-ink">{formatCOP(ingreso)}</p>
+                              <p
+                                className={`tabular font-semibold ${
+                                  ganancia < 0 ? "text-alert" : "text-settled"
+                                }`}
+                              >
+                                {formatCOP(ganancia)}
+                              </p>
                             </td>
                           );
                         })}
@@ -262,8 +274,9 @@ export function SimulacionView() {
                 </tbody>
               </table>
               <p className="border-t border-line bg-paper/60 px-4 py-2.5 text-xs text-ink-muted">
-                Cada celda es la ganancia total = (precio − costo unitario) × cantidad, para ese precio y
-                esa cantidad. Pasa el cursor sobre una celda para ver el ingreso total correspondiente.
+                "Costo total de compra" es costo unitario × cantidad (la inversión para traer esas
+                unidades; no depende del precio de venta). En cada celda, arriba el total de venta
+                (precio × cantidad) y abajo, resaltada, la ganancia = venta − costo total de compra.
               </p>
             </div>
           )}
