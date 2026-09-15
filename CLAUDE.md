@@ -24,18 +24,24 @@ Formato sugerido por línea: `ruta/ — qué vive ahí, en una frase`.
 - `components/icons.tsx` — íconos SVG inline (sin librería externa).
 - `components/CategoriaBadge.tsx` — insignia de categoría de producto (texto libre): color estable vía `lib/chartColors.ts#colorCategoria`, reusada en Inventario y Resumen.
 - `components/pedidos/` — `PedidosView` (orquesta datos), `KanbanBoard`, `PedidoCard`, `PedidoForm`, `PedidoDetail`.
-- `components/inventario/` — `InventarioView`, `ProductoForm` (calculadora de costo por lote, barco o avión; categoría como texto libre con `<datalist>` de sugerencias), `ProductoCard`.
+- `components/inventario/` — `InventarioView` (dos acciones: "Nueva referencia" y "Nuevo lote", más el historial debajo), `ProductoForm` (solo identidad: nombre, categoría, arancel fijo, precio, umbral de stock bajo, y en edición un ajuste manual de stock/costo), `ProductoCard`, `LoteForm` (registrar un envío/compra real, con varias líneas de referencias que reparten flete/seguro/tarifa entre sí), `LotesHistorial` (solo lectura del libro de compras).
 - `components/publicidad/` — `PublicidadView`, `GastoForm`.
 - `components/resumen/` — `ResumenView` (filtro de categoría que afecta toda la vista), `KpiTiles`, `DesgloseTabla`, `charts.tsx` (gráficas Recharts, incluyendo ventas por categoría y comparación de productos en el tiempo), `ChartCard.tsx`.
 - `components/simulacion/SimulacionView.tsx` — calculadora "qué pasaría si": por producto, categoría o todo el inventario, tabla precio × cantidad que muestra costo total de compra (fila, no depende del precio), venta total y ganancia (por celda), usando `lib/calc.ts` (sin cálculos propios).
 - `lib/supabaseClient.ts` — cliente de Supabase (browser, sin auth).
-- `lib/types.ts` — tipos TS que reflejan el esquema de la base de datos.
-- `lib/calc.ts` — TODOS los cálculos de negocio (costo por lote barco/avión, ganancia, margen, formato COP). Un solo lugar, no duplicar cuentas en componentes.
-- `lib/metrics.ts` — agregaciones para Resumen (KPIs y datos por gráfica) a partir de los datos ya cargados, incluida `categoriasDisponibles` (lista de categorías reales, ya no un enum fijo).
+- `lib/types.ts` — tipos TS que reflejan el esquema de la base de datos, incluidos `Lote`/`LoteItem`/`LoteConItems`.
+- `lib/calc.ts` — TODOS los cálculos de negocio: costo unitario por línea de lote (barco/avión), `prorratear` (reparte un costo compartido del lote entre las unidades de una línea) y `costoPromedioPonderado` (costo unitario del producto tras un reabastecimiento), ganancia, margen, formato COP. Un solo lugar, no duplicar cuentas en componentes.
+- `lib/metrics.ts` — agregaciones para Resumen (KPIs y datos por gráfica) a partir de los datos ya cargados, incluida `categoriasDisponibles` (lista de categorías reales, ya no un enum fijo). `computeKpis` recibe también los `lote_items` cargados, para sumar la publicidad prorrateada de los lotes (ya no vive en `productos`).
 - `lib/chartColors.ts` — colores de gráficas: par fijo para series binarias (entrega) y `CATEGORIA_PALETTE`/`colorCategoria` para categorías de producto dinámicas, validados aparte para accesibilidad (ver nota abajo).
 - `lib/useRealtimeQuery.ts` — hook: carga una tabla y se resuscribe a cambios realtime de Supabase (recarga todo en cualquier cambio; suficiente para el volumen de un vendedor pequeño).
 
-**Esquema de Supabase** (proyecto `panel-ventas`, ref `mgyzwlymgwkbrqjhatjh`): tablas `productos`, `pedidos`, `gastos_publicidad`. `productos.categoria` es texto libre (sin CHECK de valores) — ya no un enum fijo chaqueta/jellycat; la UI sugiere las ya usadas vía `<datalist>`. `productos.metodo_importacion` (`barco`|`avion`) decide cómo se deriva `costo_unitario` en la UI: barco = (costo+flete+publicidad)/unidades; avión = ((CIF+arancel)×1.19 + tarifa_avion + publicidad)/unidades, con CIF = costo+seguro+flete y arancel = CIF×`arancel_pct`/100 (arancel fijo por referencia, guardado en el producto). El stock se ajusta con un trigger de Postgres al cambiar `pedidos.estado` (resta al entrar a "entregado", repone al salir), no desde el cliente. `pedidos.estado_actualizado_en` se actualiza solo cuando cambia `estado` (trigger aparte de `updated_at`) — es la base de la señal "días sin avanzar" y del eje de tiempo del resumen. Los GRANTs a `anon`/`authenticated` son a nivel de tabla: si se agregan columnas nuevas, no hace falta volver a otorgar permisos (confirmar de todas formas con una consulta a `information_schema.column_privileges` tras migrar).
+**Esquema de Supabase** (proyecto `panel-ventas`, ref `mgyzwlymgwkbrqjhatjh`): tablas `productos`, `lotes`, `lote_items`, `pedidos`, `gastos_publicidad`.
+
+`productos` es solo identidad + agregados vivos: `nombre`, `categoria` (texto libre, sin CHECK de valores — la UI sugiere las ya usadas vía `<datalist>`), `arancel_pct` (fijo por referencia, se reutiliza en cada lote futuro de esa misma referencia), `precio_venta`, `stock`, `costo_unitario`, `umbral_stock_bajo`. Ya NO tiene campos de costo de lote ni método de importación — eso vive en `lotes`/`lote_items`, porque en la vida real cada reabastecimiento es una compra nueva con sus propios costos, y un mismo envío puede traer varias referencias a la vez compartiendo flete/seguro/tarifa.
+
+`lotes` es un envío/compra real: `fecha`, `metodo_importacion` (`barco`|`avion`), y los costos **compartidos** de ese envío (`flete_total`, `seguro_total`, `tarifa_avion_total`). `lote_items` es una línea de ese lote: `producto_id`, `costo_mercancia` (propio de esa línea), `unidades`, `publicidad` (opcional, propia de esa línea, no compartida), y `costo_unitario_resultante` (snapshot del costo ya calculado para esa línea en ese momento — no cambia si después se edita el `arancel_pct` del producto). Al registrar un lote (`components/inventario/LoteForm.tsx`), los costos compartidos se reparten entre las líneas **según sus unidades** (`prorratear`), se calcula el costo unitario de cada línea (barco o avión, usando el `arancel_pct` del producto de esa línea si es avión), y el producto se actualiza: `stock += unidades` y `costo_unitario = costoPromedioPonderado(...)` (promedio ponderado con lo que ya había en stock — si el stock previo era 0, el resultado es exactamente el costo del lote nuevo, sin arrastrar nada de antes). `lotes`/`lote_items` son un libro de compras: RLS solo permite `SELECT`/`INSERT` a `anon` (nunca UPDATE/DELETE) — para corregir un error puntual está el ajuste manual de stock/costo en "Editar referencia", no editar el lote.
+
+El stock también se ajusta con un trigger de Postgres al cambiar `pedidos.estado` (resta al entrar a "entregado", repone al salir), no desde el cliente. `pedidos.estado_actualizado_en` se actualiza solo cuando cambia `estado` (trigger aparte de `updated_at`) — es la base de la señal "días sin avanzar" y del eje de tiempo del resumen. Los GRANTs a `anon`/`authenticated` son a nivel de tabla: si se agregan columnas nuevas, no hace falta volver a otorgar permisos (confirmar de todas formas con una consulta a `information_schema.column_privileges` tras migrar). `lote_items` tiene índices en `lote_id` y `producto_id` (FKs) — agregarlos también en cualquier tabla nueva con FKs, el advisor de performance de Supabase los marca si faltan.
 
 **Nota de colores de gráfica:** los tokens de `app/globals.css` (usados en badges/botones) son deliberadamente algo apagados para verse cálidos; para gráficas donde el color es la única forma de distinguir series, `lib/chartColors.ts` define variantes con más croma, validadas con el validador de accesibilidad de la skill `dataviz` (contraste, separación CVD, piso de visión normal) contra el fondo de tarjeta. `CATEGORIA_PALETTE` tiene 5 slots validados (más allá de eso, los colores se repiten — evitar agregar un 6º/7º slot sin correr el validador, un violeta ya se descartó por colisionar con el azul bajo protanopia/deuteranopia). Si se agregan series nuevas a una gráfica, volver a correr ese validador antes de fijar el color a mano.
 
@@ -101,16 +107,27 @@ Para cada pieza del sistema, antes de darla por lista:
 8. Prueba editar un pedido ya creado y confirma que el cambio se refleja.
 9. Prueba eliminar un pedido y confirma que desaparece.
 
-**Inventario**
-1. Crea una referencia nueva de prueba con costo y precio de venta, método **barco**.
-2. Confirma que la ganancia por unidad y el % de margen mostrados son matemáticamente correctos.
-3. Crea otra referencia con método **avión** (costo, seguro, flete, % de arancel, tarifa aérea,
-   publicidad, unidades) y verifica **a mano** el desglose CIF → arancel → nacionalizado con IVA →
-   costo unitario que muestra la calculadora; prueba con un arancel bajo (ej. 5-10%) y uno alto
-   (ej. 50%) para confirmar que la fórmula escala bien en ambos casos.
-4. Escribe una categoría nueva (no usada antes) al crear un producto; confirma que queda sugerida
+**Inventario y lotes**
+1. Registra un "Nuevo lote" de una sola línea con una referencia nueva, método **barco**: verifica
+   a mano que `costo_unitario_resultante = (costo_mercancia+flete+publicidad)/unidades` y que el
+   producto queda con ese stock y ese costo.
+2. Registra un lote de **varias líneas** (2-3 referencias, mezcla de nueva y existente) por **avión**,
+   con un arancel distinto por línea (ej. 5% y 50%): verifica a mano que flete/seguro/tarifa se
+   reparten entre las líneas según sus unidades, que cada línea usa el `arancel_pct` de **su propio**
+   producto, y el costo unitario resultante de cada una. Repite con varias líneas por **barco** para
+   confirmar que el reparto no quedó acoplado al caso avión.
+3. Reabastece un producto que ya tiene stock a otro costo: verifica a mano el promedio ponderado
+   resultante (`costoPromedioPonderado`) y que el stock sumó bien.
+4. Vende hasta dejar una referencia en stock = 0 y regístrale un lote nuevo: el costo unitario debe
+   quedar exactamente igual al costo de ese lote nuevo, sin mezclar nada del costo anterior (el peso
+   del stock viejo en el promedio ponderado es 0). Encadena un segundo reabastecimiento después de
+   ese para confirmar que el promedio se sigue componiendo bien lote sobre lote.
+5. Confirma que "Editar referencia" ya no tiene campos de costo de lote (solo identidad + arancel +
+   precio + el ajuste manual de stock/costo), y que el historial de lotes (solo lectura) muestra cada
+   compra con sus líneas correctas.
+6. Escribe una categoría nueva (no usada antes) al crear un producto; confirma que queda sugerida
    (autocompletar) al crear el siguiente producto.
-5. Baja el stock manualmente o mediante un pedido y confirma que el aviso de "stock bajo" aparece
+7. Baja el stock manualmente o mediante un pedido y confirma que el aviso de "stock bajo" aparece
    cuando corresponde.
 
 **Gastos de publicidad**

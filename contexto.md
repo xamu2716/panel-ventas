@@ -23,8 +23,19 @@ cálculo de nacionalización es distinto y más detallado:
 - IVA de nacionalización: 19% sobre (CIF + arancel).
 - Tarifa aérea: un cargo fijo adicional del envío, típicamente alrededor de 130,000 COP.
 Esto es contexto de cómo funciona el costeo real del negocio — el sistema ya lo implementa como
-opción "Avión" al cargar un producto (alternativa al costeo por barco), con el arancel guardado
-por referencia porque no es el mismo para todos los productos.
+opción "Avión" al registrar un lote (alternativa al costeo por barco), con el arancel guardado por
+referencia porque no es el mismo para todos los productos.
+
+## Cómo reabastece (importante para el costeo)
+Cuando se le acaba el stock de una referencia, Xamu hace un pedido nuevo a China — no es un costo
+fijo que se paga una sola vez: el costo de la mercancía y el flete varían según cuánto traiga esa
+vez. La publicidad normalmente NO se vuelve a pagar en cada reabastecimiento (es opcional). Además,
+**un mismo envío casi nunca es de una sola referencia**: por ejemplo, una caja por avión puede traer
+4 referencias distintas de Jellycat a la vez, o una caja puede traer 13 unidades repartidas entre 5
+referencias. El flete/seguro/tarifa de ese envío son del envío completo, no de una sola referencia —
+se reparten entre todas las que vinieron ahí. El sistema modela esto como "lotes" (un envío, con sus
+costos compartidos) que contienen varias "líneas" (una por referencia, con su propio costo de
+mercancía y unidades); ver la nota de esquema en `CLAUDE.md`.
 
 ## Línea 2 — Jellycat (peluches, importación desde China)
 - Presupuesto tope por pedido explorado: ~2,000,000 COP.

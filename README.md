@@ -7,10 +7,12 @@ el detalle completo; `CLAUDE.md` documenta las reglas de trabajo y el mapa del p
 
 Un solo usuario, sin login, pensado primero para celular. Next.js (App Router) + Supabase (Postgres + tiempo real) + Recharts, desplegado en Vercel.
 
-El costeo de cada producto se calcula desde su lote de importación (Alibaba/proveedor + flete +
-publicidad, o la fórmula completa de nacionalización si viene por avión: CIF + arancel por
-referencia + IVA + tarifa aérea) — nunca se teclea el costo unitario a mano salvo como ajuste
-puntual editable.
+El costeo de cada producto sale de sus lotes (envíos/compras reales, ver `lotes`/`lote_items` en
+`CLAUDE.md`): Alibaba/proveedor + flete + publicidad, o la fórmula completa de nacionalización si
+viene por avión (CIF + arancel por referencia + IVA + tarifa aérea). Un mismo lote puede traer varias
+referencias a la vez, repartiendo sus costos compartidos entre ellas, y cada reabastecimiento
+recalcula el costo del producto como promedio ponderado con lo que ya había en stock — nunca se
+teclea el costo unitario a mano salvo como ajuste puntual editable.
 
 ## Desarrollo local
 
@@ -30,7 +32,7 @@ puntual editable.
 
 ## Base de datos
 
-El esquema (`productos`, `pedidos`, `gastos_publicidad`, triggers de stock y de `estado_actualizado_en`, RLS) vive en el proyecto de Supabase y se administra con migraciones aplicadas vía su MCP — no hay archivos `.sql` en este repo. Ver la sección "Esquema de Supabase" en `CLAUDE.md` para el detalle de tablas y triggers.
+El esquema (`productos`, `lotes`, `lote_items`, `pedidos`, `gastos_publicidad`, triggers de stock y de `estado_actualizado_en`, RLS) vive en el proyecto de Supabase y se administra con migraciones aplicadas vía su MCP — no hay archivos `.sql` en este repo. Ver la sección "Esquema de Supabase" en `CLAUDE.md` para el detalle de tablas y triggers.
 
 ## Despliegue
 
