@@ -1,11 +1,15 @@
-export type Linea = "chaqueta" | "jellycat";
+export type MetodoImportacion = "barco" | "avion";
 
 export type Producto = {
   id: string;
   nombre: string;
-  linea: Linea;
+  categoria: string;
+  metodo_importacion: MetodoImportacion;
   costo_lote_alibaba: number;
   flete_lote: number;
+  seguro: number;
+  arancel_pct: number;
+  tarifa_avion: number;
   publicidad_lote: number;
   unidades_lote: number;
   costo_unitario: number;
@@ -47,7 +51,7 @@ export type Pedido = {
 
 /** Pedido con el producto asociado incluido (join de Supabase). */
 export type PedidoConProducto = Pedido & {
-  producto: Pick<Producto, "id" | "nombre" | "linea"> | null;
+  producto: Pick<Producto, "id" | "nombre" | "categoria"> | null;
 };
 
 export type GastoPublicidad = {

@@ -3,14 +3,17 @@
 import { formatCOP, gananciaUnidad, margenPct, stockBajo } from "@/lib/calc";
 import type { Producto } from "@/lib/types";
 import { Badge } from "@/components/ui";
+import { CategoriaBadge } from "@/components/CategoriaBadge";
 import { IconAlert, IconPencil, IconTrash } from "@/components/icons";
 
 export function ProductoCard({
   producto,
+  categoriasOrdenadas,
   onEdit,
   onDelete,
 }: {
   producto: Producto;
+  categoriasOrdenadas: readonly string[];
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -23,9 +26,12 @@ export function ProductoCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-semibold text-ink">{producto.nombre}</p>
-          <Badge tone={producto.linea === "chaqueta" ? "accent" : "route"}>
-            {producto.linea === "chaqueta" ? "Chaqueta" : "Jellycat"}
-          </Badge>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <CategoriaBadge categoria={producto.categoria} categoriasOrdenadas={categoriasOrdenadas} />
+            <Badge tone="neutral">
+              {producto.metodo_importacion === "avion" ? "Avión" : "Barco"}
+            </Badge>
+          </div>
         </div>
         <div className="flex gap-1">
           <button

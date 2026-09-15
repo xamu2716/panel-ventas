@@ -13,7 +13,7 @@ import { PedidoDetail } from "./PedidoDetail";
 async function fetchPedidos() {
   return supabase
     .from("pedidos")
-    .select("*, producto:productos(id,nombre,linea)")
+    .select("*, producto:productos(id,nombre,categoria)")
     .order("created_at", { ascending: false });
 }
 

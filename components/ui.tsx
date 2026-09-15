@@ -89,7 +89,12 @@ export function ToggleGroup<T extends string>({
   name: string;
 }) {
   return (
-    <div role="radiogroup" aria-label={name} className="grid grid-cols-2 gap-2">
+    <div
+      role="radiogroup"
+      aria-label={name}
+      className="grid gap-2"
+      style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
+    >
       {options.map((opt) => {
         const active = opt.value === value;
         return (
