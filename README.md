@@ -1,8 +1,16 @@
 # Panel de ventas
 
-Panel interno de pedidos, inventario y publicidad para la reventa de chaquetas de moto y peluches Jellycat importados, vendidos por Facebook Marketplace. Ver `contexto.md` (negocio) y `prompt.md` (especificación) para el detalle completo; `CLAUDE.md` documenta las reglas de trabajo y el mapa del proyecto.
+Panel interno de pedidos, inventario, publicidad y simulación de precios para la reventa de
+productos importados (categorías configurables, ej. chaquetas de moto y peluches Jellycat),
+vendidos por Facebook Marketplace. Ver `contexto.md` (negocio) y `prompt.md` (especificación) para
+el detalle completo; `CLAUDE.md` documenta las reglas de trabajo y el mapa del proyecto.
 
 Un solo usuario, sin login, pensado primero para celular. Next.js (App Router) + Supabase (Postgres + tiempo real) + Recharts, desplegado en Vercel.
+
+El costeo de cada producto se calcula desde su lote de importación (Alibaba/proveedor + flete +
+publicidad, o la fórmula completa de nacionalización si viene por avión: CIF + arancel por
+referencia + IVA + tarifa aérea) — nunca se teclea el costo unitario a mano salvo como ajuste
+puntual editable.
 
 ## Desarrollo local
 
