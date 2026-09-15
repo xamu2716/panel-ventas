@@ -3,13 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Button, Field, Input, MoneyInput, Select, Sheet, ToggleGroup } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
-import {
-  costoPromedioPonderado,
-  costoUnitarioLote,
-  costoUnitarioLoteAvion,
-  formatCOP,
-  prorratear,
-} from "@/lib/calc";
+import { costoPromedioPonderado, costoUnitarioLineaLote, formatCOP } from "@/lib/calc";
 import type { MetodoImportacion, Producto } from "@/lib/types";
 import { IconPlus, IconTrash } from "@/components/icons";
 
@@ -93,35 +87,27 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
   // propio CIF (mercancía propia + su parte prorrateada de seguro/flete), lo
   // que en conjunto da el mismo total que calcularlo una vez para toda la caja.
   function calcularLinea(item: Item) {
-    const unidades = num(item.unidades);
-    const fleteAsignado = prorratear(num(fleteTotal), unidades, unidadesTotalLote);
-    const seguroAsignado = prorratear(num(seguroTotal), unidades, unidadesTotalLote);
-    const tarifaAsignada = prorratear(num(tarifaAvionTotal), unidades, unidadesTotalLote);
-    const costoUnitario =
-      metodo === "avion"
-        ? costoUnitarioLoteAvion({
-            alibaba: num(item.costoMercancia),
-            seguro: seguroAsignado,
-            flete: fleteAsignado,
-            arancelPct: num(arancelPct),
-            tarifaAvion: tarifaAsignada,
-            publicidad: num(item.publicidad),
-            unidades,
-          })
-        : costoUnitarioLote({
-            alibaba: num(item.costoMercancia),
-            flete: fleteAsignado,
-            publicidad: num(item.publicidad),
-            unidades,
-          });
-    return { fleteAsignado, seguroAsignado, tarifaAsignada, costoUnitario };
+    return costoUnitarioLineaLote({
+      metodo,
+      costoMercancia: num(item.costoMercancia),
+      unidades: num(item.unidades),
+      publicidad: num(item.publicidad),
+      unidadesTotalLote,
+      fleteTotal: num(fleteTotal),
+      seguroTotal: num(seguroTotal),
+      tarifaAvionTotal: num(tarifaAvionTotal),
+      arancelPct: num(arancelPct),
+    });
   }
 
-  const costoTotalLote =
-    items.reduce((acc, it) => acc + num(it.costoMercancia) + num(it.publicidad), 0) +
-    num(fleteTotal) +
-    num(seguroTotal) +
-    num(tarifaAvionTotal);
+  // El total real del lote es la suma de lo que cuesta cada línea ya
+  // nacionalizada (costo unitario resultante × sus unidades) — NO la suma de
+  // los insumos crudos, que se queda corta porque no incluye el arancel ni el
+  // IVA de nacionalización cuando el envío es por avión.
+  const costoTotalLote = items.reduce((acc, it) => {
+    const unidades = num(it.unidades);
+    return acc + calcularLinea(it).costoUnitario * unidades;
+  }, 0);
 
   function validar(): string | null {
     if (items.length === 0) return "Agrega al menos una referencia.";
@@ -442,15 +428,22 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 rounded-md border border-line px-4 py-3 text-sm">
-          <div>
-            <p className="text-ink-muted">Unidades del lote</p>
-            <p className="tabular font-display text-lg text-ink">{unidadesTotalLote}</p>
+        <div className="rounded-md border border-line px-4 py-3 text-sm">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <p className="text-ink-muted">Unidades del lote</p>
+              <p className="tabular font-display text-lg text-ink">{unidadesTotalLote}</p>
+            </div>
+            <div>
+              <p className="text-ink-muted">Costo total del lote</p>
+              <p className="tabular font-display text-lg text-ink">{formatCOP(costoTotalLote)}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-ink-muted">Costo total del lote</p>
-            <p className="tabular font-display text-lg text-ink">{formatCOP(costoTotalLote)}</p>
-          </div>
+          {metodo === "avion" && (
+            <p className="mt-2 text-xs text-ink-muted">
+              Ya incluye el arancel y el IVA de nacionalización de cada línea, no solo los insumos.
+            </p>
+          )}
         </div>
 
         <Field label="Notas (opcional)" htmlFor="notas">

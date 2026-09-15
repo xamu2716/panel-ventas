@@ -80,6 +80,57 @@ export function prorratear(total: number, unidadesLinea: number, unidadesTotalLo
   return (total * unidadesLinea) / unidadesTotalLote;
 }
 
+export type LineaLoteInput = {
+  metodo: "barco" | "avion";
+  costoMercancia: number;
+  unidades: number;
+  publicidad: number;
+  unidadesTotalLote: number;
+  fleteTotal: number;
+  seguroTotal: number;
+  tarifaAvionTotal: number;
+  arancelPct: number;
+};
+
+export type LineaLoteResultado = {
+  fleteAsignado: number;
+  seguroAsignado: number;
+  tarifaAsignada: number;
+  costoUnitario: number;
+};
+
+/**
+ * Costo unitario de una línea de un lote (una referencia dentro de un envío
+ * que puede traer varias): reparte los costos compartidos del lote
+ * (flete/seguro/tarifa) según las unidades de esta línea vs. el total del
+ * lote, y aplica la fórmula de barco o avión correspondiente. Un solo lugar
+ * para esta cuenta — la usan tanto crear un lote nuevo como editar uno ya
+ * existente (ver components/inventario/LoteForm.tsx y EditarLoteForm.tsx).
+ */
+export function costoUnitarioLineaLote(input: LineaLoteInput): LineaLoteResultado {
+  const fleteAsignado = prorratear(input.fleteTotal, input.unidades, input.unidadesTotalLote);
+  const seguroAsignado = prorratear(input.seguroTotal, input.unidades, input.unidadesTotalLote);
+  const tarifaAsignada = prorratear(input.tarifaAvionTotal, input.unidades, input.unidadesTotalLote);
+  const costoUnitario =
+    input.metodo === "avion"
+      ? costoUnitarioLoteAvion({
+          alibaba: input.costoMercancia,
+          seguro: seguroAsignado,
+          flete: fleteAsignado,
+          arancelPct: input.arancelPct,
+          tarifaAvion: tarifaAsignada,
+          publicidad: input.publicidad,
+          unidades: input.unidades,
+        })
+      : costoUnitarioLote({
+          alibaba: input.costoMercancia,
+          flete: fleteAsignado,
+          publicidad: input.publicidad,
+          unidades: input.unidades,
+        });
+  return { fleteAsignado, seguroAsignado, tarifaAsignada, costoUnitario };
+}
+
 export type PromedioPonderadoInput = {
   stockActual: number;
   costoActual: number;
