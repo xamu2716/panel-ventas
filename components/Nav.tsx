@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconBox, IconChart, IconMegaphone, IconRoute } from "./icons";
+import { IconBox, IconChart, IconMegaphone, IconRoute, IconSliders } from "./icons";
 
 const ITEMS = [
   { href: "/", label: "Pedidos", icon: IconRoute },
   { href: "/inventario", label: "Inventario", icon: IconBox },
   { href: "/publicidad", label: "Publicidad", icon: IconMegaphone },
   { href: "/resumen", label: "Resumen", icon: IconChart },
+  { href: "/simulacion", label: "Simulación", icon: IconSliders },
 ];
 
 export function Nav() {
@@ -23,7 +24,7 @@ export function Nav() {
       >
         <div className="px-3 pb-6">
           <p className="font-display text-2xl text-ink">Panel de ventas</p>
-          <p className="text-sm text-ink-muted">Chaquetas · Jellycat</p>
+          <p className="text-sm text-ink-muted">Pedidos, inventario y ventas</p>
         </div>
         {ITEMS.map((item) => {
           const active = pathname === item.href;

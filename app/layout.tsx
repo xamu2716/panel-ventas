@@ -18,7 +18,7 @@ const publicSans = Public_Sans({
 
 export const metadata: Metadata = {
   title: "Panel de ventas",
-  description: "Pedidos, inventario y publicidad de chaquetas y Jellycat.",
+  description: "Pedidos, inventario, publicidad y simulación de precios del negocio.",
 };
 
 export const viewport: Viewport = {

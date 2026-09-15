@@ -128,6 +128,22 @@ export function IconAlert(props: IconProps) {
   );
 }
 
+export function IconSliders(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 6h9" />
+      <path d="M17 6h3" />
+      <circle cx="14" cy="6" r="2.3" />
+      <path d="M4 12h3" />
+      <path d="M11 12h9" />
+      <circle cx="8" cy="12" r="2.3" />
+      <path d="M4 18h9" />
+      <path d="M17 18h3" />
+      <circle cx="14" cy="18" r="2.3" />
+    </svg>
+  );
+}
+
 export function IconPhone(props: IconProps) {
   return (
     <svg {...base(props)}>
