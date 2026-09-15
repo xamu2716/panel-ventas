@@ -14,6 +14,18 @@ Estudiante de Ingeniería de Sistemas en la Pontificia Universidad Javeriana, Bo
 - Ya se revisaron facturas proforma y listas de empaque; se generaron fotos de producto con IA (Gemini/"Nanobanana") y mensajes de negociación con el proveedor en inglés.
 - Estado: en camino / próximas a llegar. El dueño necesita el sistema de ventas listo ANTES de que lleguen, porque espera un pico de demanda fuerte (ya hay ~100 interesados de la validación inicial).
 
+## Importación por avión (además de barco)
+Algunas referencias (no solo chaquetas) también pueden traerse por avión en vez de barco. El
+cálculo de nacionalización es distinto y más detallado:
+- CIF = costo de la mercancía + seguro + flete aéreo.
+- Arancel: un % que varía por referencia específica (ejemplos reales: 5%, 10%, 50% — no es un
+  número fijo del negocio, cada producto tiene el suyo), aplicado sobre el CIF.
+- IVA de nacionalización: 19% sobre (CIF + arancel).
+- Tarifa aérea: un cargo fijo adicional del envío, típicamente alrededor de 130,000 COP.
+Esto es contexto de cómo funciona el costeo real del negocio — el sistema ya lo implementa como
+opción "Avión" al cargar un producto (alternativa al costeo por barco), con el arancel guardado
+por referencia porque no es el mismo para todos los productos.
+
 ## Línea 2 — Jellycat (peluches, importación desde China)
 - Presupuesto tope por pedido explorado: ~2,000,000 COP.
 - Proveedor encontrado vía redes sociales; mezcla de referencias — principalmente "cakes" y "croissant", combinadas con "popcorn" y otras variadas del mismo estilo.

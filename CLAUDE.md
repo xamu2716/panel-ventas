@@ -27,7 +27,7 @@ Formato sugerido por línea: `ruta/ — qué vive ahí, en una frase`.
 - `components/inventario/` — `InventarioView`, `ProductoForm` (calculadora de costo por lote, barco o avión; categoría como texto libre con `<datalist>` de sugerencias), `ProductoCard`.
 - `components/publicidad/` — `PublicidadView`, `GastoForm`.
 - `components/resumen/` — `ResumenView` (filtro de categoría que afecta toda la vista), `KpiTiles`, `DesgloseTabla`, `charts.tsx` (gráficas Recharts, incluyendo ventas por categoría y comparación de productos en el tiempo), `ChartCard.tsx`.
-- `components/simulacion/SimulacionView.tsx` — calculadora "qué pasaría si": por producto, categoría o todo el inventario, tabla precio × cantidad → ganancia, usando `lib/calc.ts` (sin cálculos propios).
+- `components/simulacion/SimulacionView.tsx` — calculadora "qué pasaría si": por producto, categoría o todo el inventario, tabla precio × cantidad que muestra costo total de compra (fila, no depende del precio), venta total y ganancia (por celda), usando `lib/calc.ts` (sin cálculos propios).
 - `lib/supabaseClient.ts` — cliente de Supabase (browser, sin auth).
 - `lib/types.ts` — tipos TS que reflejan el esquema de la base de datos.
 - `lib/calc.ts` — TODOS los cálculos de negocio (costo por lote barco/avión, ganancia, margen, formato COP). Un solo lugar, no duplicar cuentas en componentes.
@@ -102,19 +102,32 @@ Para cada pieza del sistema, antes de darla por lista:
 9. Prueba eliminar un pedido y confirma que desaparece.
 
 **Inventario**
-1. Crea una referencia nueva de prueba con costo y precio de venta.
+1. Crea una referencia nueva de prueba con costo y precio de venta, método **barco**.
 2. Confirma que la ganancia por unidad y el % de margen mostrados son matemáticamente correctos.
-3. Baja el stock manualmente o mediante un pedido y confirma que el aviso de "stock bajo" aparece cuando corresponde.
+3. Crea otra referencia con método **avión** (costo, seguro, flete, % de arancel, tarifa aérea,
+   publicidad, unidades) y verifica **a mano** el desglose CIF → arancel → nacionalizado con IVA →
+   costo unitario que muestra la calculadora; prueba con un arancel bajo (ej. 5-10%) y uno alto
+   (ej. 50%) para confirmar que la fórmula escala bien en ambos casos.
+4. Escribe una categoría nueva (no usada antes) al crear un producto; confirma que queda sugerida
+   (autocompletar) al crear el siguiente producto.
+5. Baja el stock manualmente o mediante un pedido y confirma que el aviso de "stock bajo" aparece
+   cuando corresponde.
 
 **Gastos de publicidad**
 1. Registra un gasto de prueba.
 2. Confirma que aparece en el listado y que se descuenta correctamente de la ganancia neta en el Resumen.
 
 **Resumen y gráficas**
-1. Con datos de prueba ya cargados (pedidos, inventario, gastos), abre la vista de Resumen.
-2. Confirma que cada KPI (ingresos, ganancia neta, pendiente, stock valorado) coincide con una cuenta manual a partir de los datos de prueba que cargaste.
-3. Confirma que cada una de las 6 gráficas definidas en `prompt.md` renderiza, con datos reales (no vacía, no rota, no con overflow).
-4. Confirma que la tabla de desglose por producto coincide con los datos de prueba.
+1. Con datos de prueba de al menos dos categorías distintas ya cargados (pedidos, inventario, gastos), abre la vista de Resumen.
+2. Con el filtro en "Todas", confirma que cada KPI (ingresos, ganancia neta, pendiente, stock valorado) coincide con una cuenta manual a partir de TODOS los datos de prueba, y que la gráfica de ventas por categoría cuadra.
+3. Cambia el filtro a una categoría específica: confirma que los KPIs, las gráficas y la tabla de desglose se restringen a esa categoría, y que aparece la gráfica de "unidades por producto en el tiempo" comparando las referencias de esa categoría.
+4. Confirma que cada gráfica renderiza con datos reales (no vacía, no rota, no con overflow) — si una gráfica se ve vacía en una captura de pantalla, antes de asumir que está rota, verifica con una captura de solo ese elemento (`.recharts-wrapper`) o leyendo las coordenadas del SVG (`cx`/`cy` de `.recharts-line-dot`, etc.): las capturas `fullPage` de Recharts en Playwright pueden verse vacías o con la barra de navegación inferior encima por timing/overlap, sin que sea un error real.
+5. Confirma que la tabla de desglose por producto coincide con los datos de prueba.
+
+**Simulación**
+1. Alcance "Producto": elige uno con costo conocido, prueba varios precios y cantidades, y verifica **a mano** en varias celdas que el costo total de compra = costo unitario × cantidad, la venta = precio × cantidad, y la ganancia = venta − costo total.
+2. Alcance "Categoría" y "Todo": confirma que el costo y precio sugeridos son el promedio de los productos en ese alcance (verifica la cuenta), y que siguen siendo editables.
+3. Prueba con un producto costeado por avión: el costo unitario base debe ser el mismo que aparece en Inventario (ya incluye la fórmula completa), no un recálculo aparte.
 
 **Sincronización entre dispositivos**
 1. Con el MCP de Playwright, abre la página en dos pestañas/contextos distintos.
