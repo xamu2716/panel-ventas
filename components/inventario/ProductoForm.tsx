@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { Button, Field, Input, MoneyInput, Sheet } from "@/components/ui";
+import { CategoriaField } from "@/components/CategoriaField";
 import { supabase } from "@/lib/supabaseClient";
 import type { Producto } from "@/lib/types";
 
@@ -88,25 +89,12 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
           />
         </Field>
 
-        <Field
-          label="Categoría"
-          htmlFor="categoria"
-          hint="Escribe la que necesites — no está limitada a una lista fija."
-        >
-          <Input
-            id="categoria"
-            list="categorias-existentes"
-            value={categoria}
-            onChange={(e) => setCategoria(e.target.value)}
-            placeholder="Ej. chaqueta, jellycat…"
-            required
-          />
-          <datalist id="categorias-existentes">
-            {categoriasExistentes.map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </Field>
+        <CategoriaField
+          value={categoria}
+          onChange={setCategoria}
+          categoriasExistentes={categoriasExistentes}
+          idPrefix="producto"
+        />
 
         <Field label="Precio de venta (por unidad)" htmlFor="precioVenta">
           <MoneyInput id="precioVenta" value={precioVenta} onChange={setPrecioVenta} placeholder="0" required />

@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { Button, Field, Input, MoneyInput, Select, Sheet, ToggleGroup } from "@/components/ui";
+import { CategoriaField } from "@/components/CategoriaField";
 import { supabase } from "@/lib/supabaseClient";
 import { costoPromedioPonderado, costoUnitarioLineaLote, formatCOP } from "@/lib/calc";
 import type { MetodoImportacion, Producto } from "@/lib/types";
@@ -343,20 +344,12 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
                         placeholder="Ej. Jellycat Popcorn"
                       />
                     </Field>
-                    <Field label="Categoría" htmlFor={`categoria-${item.key}`}>
-                      <Input
-                        id={`categoria-${item.key}`}
-                        list="categorias-existentes-lote"
-                        value={item.categoriaNueva}
-                        onChange={(e) => actualizarItem(item.key, { categoriaNueva: e.target.value })}
-                        placeholder="Ej. jellycat"
-                      />
-                      <datalist id="categorias-existentes-lote">
-                        {categoriasExistentes.map((c) => (
-                          <option key={c} value={c} />
-                        ))}
-                      </datalist>
-                    </Field>
+                    <CategoriaField
+                      value={item.categoriaNueva}
+                      onChange={(v) => actualizarItem(item.key, { categoriaNueva: v })}
+                      categoriasExistentes={categoriasExistentes}
+                      idPrefix={`lote-${item.key}`}
+                    />
                     <Field label="Precio de venta" htmlFor={`precio-${item.key}`}>
                       <MoneyInput
                         id={`precio-${item.key}`}
