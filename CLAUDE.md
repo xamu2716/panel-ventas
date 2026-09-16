@@ -23,11 +23,12 @@ Formato sugerido por línea: `ruta/ — qué vive ahí, en una frase`.
 - `components/ui.tsx` — primitivos reusados en toda la app (Button, Field, Input, MoneyInput, Select, Textarea, ToggleGroup, Badge, Sheet, EmptyState). `ToggleGroup` acepta cualquier número de opciones (columnas via `gridTemplateColumns` inline, no clase fija). `MoneyInput` muestra separador de miles ("1.000.000") mientras se escribe en cualquier campo de plata — el valor que entra/sale sigue siendo el número plano en texto, igual que un `Input` normal.
 - `components/icons.tsx` — íconos SVG inline (sin librería externa).
 - `components/CategoriaBadge.tsx` — insignia de categoría de producto (texto libre): color estable vía `lib/chartColors.ts#colorCategoria`, reusada en Inventario y Resumen.
+- `components/CategoriaField.tsx` — campo de categoría reusado en `ProductoForm` y en cada línea de "nueva referencia" de `LoteForm`: texto libre si todavía no hay ninguna categoría creada, desplegable con las ya usadas + "+ Nueva categoría…" en cuanto ya existe al menos una (evita crear "jellycat"/"Jellycat" como categorías distintas por error de tipeo).
 - `components/pedidos/` — `PedidosView` (orquesta datos), `KanbanBoard`, `PedidoCard`, `PedidoForm`, `PedidoDetail`.
 - `components/inventario/` — `InventarioView` (dos acciones: "Nueva referencia" y "Nuevo lote", más el historial debajo), `ProductoForm` (solo identidad: nombre, categoría, precio, umbral de stock bajo, y en edición un ajuste manual de stock/costo — **sin** arancel, eso es del lote), `ProductoCard`, `LoteForm` (registrar un envío/compra real, con varias líneas de referencias que reparten flete/seguro/tarifa/arancel entre sí; "Costo total del lote" es la suma de los costos ya nacionalizados por línea, no de los insumos crudos), `EditarLoteForm` (editar cabecera + números de línea de un lote ya existente, líneas fijas sin agregar/quitar), `LotesHistorial` (libro de compras con botones Editar/Eliminar cuando el lote es editable, ver más abajo).
 - `components/publicidad/` — `PublicidadView`, `GastoForm`.
 - `components/resumen/` — `ResumenView` (filtro de categoría que afecta toda la vista), `KpiTiles`, `DesgloseTabla`, `charts.tsx` (gráficas Recharts: ingresos, estado de pedidos, ventas por producto, capital invertido por producto, entrega, stock por producto, y por categoría — ventas y capital invertido — o comparación en el tiempo si hay un filtro activo; no incluye margen por producto, esa métrica ya se ve en cada tarjeta de Inventario), `ChartCard.tsx`.
-- `components/simulacion/SimulacionView.tsx` — calculadora "qué pasaría si": por producto, categoría o todo el inventario, tabla precio × cantidad que muestra costo total de compra (fila, no depende del precio), venta total y ganancia (por celda), usando `lib/calc.ts` (sin cálculos propios).
+- `components/simulacion/SimulacionView.tsx` — calculadora "qué pasaría si", con dos modos de "Alcance": **Producto** (un producto específico, tabla precio × cantidad que muestra costo total de compra, venta total y ganancia por celda) y **Varias referencias** (lista dinámica al estilo `LoteForm`: cada línea es una referencia con su propio precio de venta a probar y sus propias unidades, con un resumen agregado de total invertido/total a vender/ganancia). Usa `lib/calc.ts` (`totalPedido`, `gananciaPedido`, `margenPct`) sin cálculos propios.
 - `lib/supabaseClient.ts` — cliente de Supabase (browser, sin auth).
 - `lib/types.ts` — tipos TS que reflejan el esquema de la base de datos, incluidos `Lote`/`LoteItem`/`LoteConItems`.
 - `lib/calc.ts` — TODOS los cálculos de negocio: `costoUnitarioLineaLote` (costo de una línea de lote dados los compartidos del envío — barco o avión, prorrateando flete/seguro/tarifa según unidades; la usan tanto `LoteForm` como `EditarLoteForm`), `costoPromedioPonderado` (costo unitario del producto tras un reabastecimiento) y su inverso `reversarLinea` (el estado stock/costo de un producto ANTES de una línea de lote — solo exacto si esa línea es la compra más reciente de esa referencia, ver `lib/lotesSync.ts`), ganancia, margen, formato COP. Un solo lugar, no duplicar cuentas en componentes.
@@ -130,8 +131,12 @@ Para cada pieza del sistema, antes de darla por lista:
    precio + el ajuste manual de stock/costo), y que "Costo total del lote" en el formulario de
    "Nuevo lote" es la suma de los costos ya nacionalizados por línea (incluye arancel + IVA en
    avión), no la suma de los insumos crudos.
-6. Escribe una categoría nueva (no usada antes) al crear un producto; confirma que queda sugerida
-   (autocompletar) al crear el siguiente producto.
+6. Mientras no hay ninguna categoría creada, el campo Categoría es texto libre; en cuanto ya existe
+   al menos una, se convierte en desplegable con las ya usadas + "+ Nueva categoría…". Crea una
+   referencia eligiendo una categoría existente del desplegable y confirma que se guarda idéntica
+   (mismo string); crea otra eligiendo "+ Nueva categoría…", escríbela y confirma que aparece en el
+   desplegable la próxima vez. Repite dentro de "Nuevo lote" (línea de "nueva referencia") — cada
+   línea debe manejar su propio estado de "categoría nueva sí/no" sin afectar a las demás.
 7. Baja el stock manualmente o mediante un pedido y confirma que el aviso de "stock bajo" aparece
    cuando corresponde.
 8. Edita el lote más reciente de una sola línea (cambia costo de mercancía y unidades): el costo
@@ -159,8 +164,12 @@ Para cada pieza del sistema, antes de darla por lista:
 
 **Simulación**
 1. Alcance "Producto": elige uno con costo conocido, prueba varios precios y cantidades, y verifica **a mano** en varias celdas que el costo total de compra = costo unitario × cantidad, la venta = precio × cantidad, y la ganancia = venta − costo total.
-2. Alcance "Categoría" y "Todo": confirma que el costo y precio sugeridos son el promedio de los productos en ese alcance (verifica la cuenta), y que siguen siendo editables.
-3. Prueba con un producto costeado por avión: el costo unitario base debe ser el mismo que aparece en Inventario (ya incluye la fórmula completa), no un recálculo aparte.
+2. Prueba con un producto costeado por avión: el costo unitario base debe ser el mismo que aparece en Inventario (ya incluye la fórmula completa), no un recálculo aparte.
+3. Alcance "Varias referencias": agrega dos o más líneas con referencias distintas, cada una con su
+   propio precio de venta a probar y sus propias unidades (el precio se sugiere solo al elegir el
+   producto de esa línea; editable después). Verifica **a mano** que el resumen (total invertido,
+   total a vender, ganancia/pérdida) es la suma de todas las líneas, que quitar una línea recalcula
+   el resumen sin ella, y que no se puede quitar si solo queda una.
 
 **Sincronización entre dispositivos**
 1. Con el MCP de Playwright, abre la página en dos pestañas/contextos distintos.
