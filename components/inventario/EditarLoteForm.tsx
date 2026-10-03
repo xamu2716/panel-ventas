@@ -51,6 +51,9 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
 
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s));
 
+  // Compra directa (Temu, Shein, local): sin costos de envío ni publicidad en la línea.
+  const esDirecta = metodo === "directa";
+
   function actualizarLinea(id: string, cambios: Partial<LineaForm>) {
     setLineas((prev) => prev.map((l) => (l.id === id ? { ...l, ...cambios } : l)));
   }
@@ -62,7 +65,7 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
       metodo,
       costoMercancia: num(linea.costoMercancia),
       unidades: num(linea.unidades),
-      publicidad: num(linea.publicidad),
+      publicidad: esDirecta ? 0 : num(linea.publicidad),
       unidadesTotalLote,
       fleteTotal: num(fleteTotal),
       seguroTotal: num(seguroTotal),
@@ -76,6 +79,9 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
   function validar(): string | null {
     for (const l of lineas) {
       if (num(l.unidades) <= 0) return "Cada línea necesita unidades mayores a 0.";
+      if (esDirecta && num(l.costoMercancia) <= 0) {
+        return "Escribe cuánto pagaste por cada referencia (el total, mayor a 0).";
+      }
     }
     return null;
   }
@@ -94,7 +100,9 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
       await aplicarCambiosDeLote(lote, {
         fecha,
         metodoImportacion: metodo,
-        fleteTotal: num(fleteTotal),
+        // En compra directa no hay costos de envío: se guarda 0 aunque haya
+        // quedado texto en esos campos al cambiar de tipo.
+        fleteTotal: esDirecta ? 0 : num(fleteTotal),
         seguroTotal: metodo === "avion" ? num(seguroTotal) : 0,
         tarifaAvionTotal: metodo === "avion" ? num(tarifaAvionTotal) : 0,
         arancelPct: metodo === "avion" ? num(arancelPct) : 0,
@@ -104,7 +112,7 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
           productoId: l.productoId,
           costoMercancia: num(l.costoMercancia),
           unidades: num(l.unidades),
-          publicidad: num(l.publicidad),
+          publicidad: esDirecta ? 0 : num(l.publicidad),
         })),
       });
       onSaved();
@@ -128,18 +136,20 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
           <Input id="fecha-editar" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
 
-        <Field label="Método de importación" htmlFor="metodo-editar">
+        <Field label="Tipo de compra" htmlFor="metodo-editar">
           <ToggleGroup
-            name="Método de importación"
+            name="Tipo de compra"
             value={metodo}
             onChange={setMetodo}
             options={[
               { value: "barco", label: "Barco" },
               { value: "avion", label: "Avión" },
+              { value: "directa", label: "Compra directa" },
             ]}
           />
         </Field>
 
+        {!esDirecta && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Flete total del envío" htmlFor="fleteTotal-editar">
             <MoneyInput id="fleteTotal-editar" value={fleteTotal} onChange={setFleteTotal} placeholder="0" />
@@ -173,6 +183,7 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
             </>
           )}
         </div>
+        )}
 
         <div className="flex flex-col gap-4">
           <p className="text-sm font-semibold text-ink">Referencias de este lote</p>
@@ -183,7 +194,10 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
                 <p className="font-semibold text-ink">{linea.nombre}</p>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Costo de mercancía" htmlFor={`mercancia-${linea.id}`}>
+                  <Field
+                    label={esDirecta ? "Total pagado por esta referencia" : "Costo de mercancía"}
+                    htmlFor={`mercancia-${linea.id}`}
+                  >
                     <MoneyInput
                       id={`mercancia-${linea.id}`}
                       value={linea.costoMercancia}
@@ -200,28 +214,32 @@ export function EditarLoteForm({ lote, onClose, onSaved }: Props) {
                       placeholder="Ej. 4"
                     />
                   </Field>
-                  <Field label="Publicidad (opcional)" htmlFor={`publicidad-${linea.id}`}>
-                    <MoneyInput
-                      id={`publicidad-${linea.id}`}
-                      value={linea.publicidad}
-                      onChange={(v) => actualizarLinea(linea.id, { publicidad: v })}
-                      placeholder="0"
-                    />
-                  </Field>
+                  {!esDirecta && (
+                    <Field label="Publicidad (opcional)" htmlFor={`publicidad-${linea.id}`}>
+                      <MoneyInput
+                        id={`publicidad-${linea.id}`}
+                        value={linea.publicidad}
+                        onChange={(v) => actualizarLinea(linea.id, { publicidad: v })}
+                        placeholder="0"
+                      />
+                    </Field>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1 rounded-md border border-line bg-surface px-3 py-2.5 text-xs text-ink-muted">
-                  <p>
-                    Flete asignado: <span className="tabular font-medium text-ink">{formatCOP(fleteAsignado)}</span>
-                    {metodo === "avion" && (
-                      <>
-                        {" · Seguro: "}
-                        <span className="tabular font-medium text-ink">{formatCOP(seguroAsignado)}</span>
-                        {" · Tarifa: "}
-                        <span className="tabular font-medium text-ink">{formatCOP(tarifaAsignada)}</span>
-                      </>
-                    )}
-                  </p>
+                  {!esDirecta && (
+                    <p>
+                      Flete asignado: <span className="tabular font-medium text-ink">{formatCOP(fleteAsignado)}</span>
+                      {metodo === "avion" && (
+                        <>
+                          {" · Seguro: "}
+                          <span className="tabular font-medium text-ink">{formatCOP(seguroAsignado)}</span>
+                          {" · Tarifa: "}
+                          <span className="tabular font-medium text-ink">{formatCOP(tarifaAsignada)}</span>
+                        </>
+                      )}
+                    </p>
+                  )}
                   <p>
                     Costo unitario resultante:{" "}
                     <span className="tabular font-display text-sm text-accent-strong">

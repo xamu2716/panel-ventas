@@ -90,6 +90,9 @@ function reversar(
  * primero; solo si nada queda en negativo se escribe en la base de datos.
  */
 export async function aplicarCambiosDeLote(lote: LoteConItems, cambios: CambiosLote): Promise<void> {
+  // Compra directa (Temu, Shein, local): sin costos de envío ni publicidad en la
+  // línea. Se fuerzan a 0 aquí también, no solo en el formulario.
+  const esDirecta = cambios.metodoImportacion === "directa";
   const unidadesTotalLote = cambios.lineas.reduce((acc, l) => acc + l.unidades, 0);
   const productoIds = [...new Set(lote.lote_items.map((li) => li.producto_id))];
   const productosActuales = await traerProductosActuales(productoIds);
@@ -110,9 +113,9 @@ export async function aplicarCambiosDeLote(lote: LoteConItems, cambios: CambiosL
       metodo: cambios.metodoImportacion,
       costoMercancia: lineaNueva.costoMercancia,
       unidades: lineaNueva.unidades,
-      publicidad: lineaNueva.publicidad,
+      publicidad: esDirecta ? 0 : lineaNueva.publicidad,
       unidadesTotalLote,
-      fleteTotal: cambios.fleteTotal,
+      fleteTotal: esDirecta ? 0 : cambios.fleteTotal,
       seguroTotal: cambios.seguroTotal,
       tarifaAvionTotal: cambios.tarifaAvionTotal,
       arancelPct: cambios.arancelPct,
@@ -134,7 +137,7 @@ export async function aplicarCambiosDeLote(lote: LoteConItems, cambios: CambiosL
     .update({
       fecha: cambios.fecha,
       metodo_importacion: cambios.metodoImportacion,
-      flete_total: cambios.fleteTotal,
+      flete_total: esDirecta ? 0 : cambios.fleteTotal,
       seguro_total: cambios.metodoImportacion === "avion" ? cambios.seguroTotal : 0,
       tarifa_avion_total: cambios.metodoImportacion === "avion" ? cambios.tarifaAvionTotal : 0,
       arancel_pct: cambios.metodoImportacion === "avion" ? cambios.arancelPct : 0,
@@ -149,7 +152,7 @@ export async function aplicarCambiosDeLote(lote: LoteConItems, cambios: CambiosL
       .update({
         costo_mercancia: lineaNueva.costoMercancia,
         unidades: lineaNueva.unidades,
-        publicidad: lineaNueva.publicidad,
+        publicidad: esDirecta ? 0 : lineaNueva.publicidad,
         costo_unitario_resultante: costoResultantePorLinea.get(lineaNueva.id) ?? 0,
       })
       .eq("id", lineaNueva.id);
