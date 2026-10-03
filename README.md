@@ -34,7 +34,7 @@ teclea el costo unitario a mano salvo como ajuste puntual editable.
 
 ## Base de datos
 
-El esquema (`productos`, `lotes`, `lote_items`, `pedidos`, `gastos_publicidad`, triggers de stock y de `estado_actualizado_en`, RLS) vive en el proyecto de Supabase y se administra con migraciones aplicadas vía su MCP; solo la tabla `heartbeat` (keep-alive) tiene su SQL en `supabase/migrations/`. Ver la sección "Esquema de Supabase" en `CLAUDE.md` para el detalle de tablas y triggers.
+El esquema (`productos`, `lotes`, `lote_items`, `pedidos`, `gastos_publicidad`, triggers de stock y de `estado_actualizado_en`, RLS) vive en el proyecto de Supabase y se administra con migraciones aplicadas vía su MCP; desde el keep-alive cada cambio de esquema también se guarda en `supabase/migrations/` (tabla `heartbeat`, `gastos_publicidad.producto_id` y el tipo de lote `directa`). Ver la sección "Esquema de Supabase" en `CLAUDE.md` para el detalle de tablas y triggers.
 
 ## Despliegue
 
