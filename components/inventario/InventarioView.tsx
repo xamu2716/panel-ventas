@@ -3,8 +3,12 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
-import type { Producto } from "@/lib/types";
-import { categoriasDisponibles } from "@/lib/metrics";
+import type { GastoPublicidad, LoteItem, Producto } from "@/lib/types";
+import {
+  categoriasDisponibles,
+  publicidadAsignadaPorProducto,
+  unidadesCompradasPorProducto,
+} from "@/lib/metrics";
 import { Button, EmptyState } from "@/components/ui";
 import { IconBox, IconPlus } from "@/components/icons";
 import { ProductoForm } from "./ProductoForm";
@@ -16,11 +20,24 @@ async function fetchProductos() {
   return supabase.from("productos").select("*").order("nombre", { ascending: true });
 }
 
+async function fetchGastos() {
+  return supabase.from("gastos_publicidad").select("*");
+}
+
+async function fetchLoteItems() {
+  return supabase.from("lote_items").select("*");
+}
+
 export function InventarioView() {
   const { data: productos, loading, error, reload } = useRealtimeQuery<Producto>(
     "productos",
     fetchProductos,
   );
+  // Para mostrar la publicidad asignada a cada referencia y su costo con publicidad.
+  const { data: gastos } = useRealtimeQuery<GastoPublicidad>("gastos_publicidad", fetchGastos);
+  const { data: loteItems } = useRealtimeQuery<LoteItem>("lote_items", fetchLoteItems);
+  const publicidadPorProducto = useMemo(() => publicidadAsignadaPorProducto(gastos), [gastos]);
+  const compradasPorProducto = useMemo(() => unidadesCompradasPorProducto(loteItems), [loteItems]);
   const [formOpen, setFormOpen] = useState(false);
   const [loteFormOpen, setLoteFormOpen] = useState(false);
   const [editando, setEditando] = useState<Producto | undefined>(undefined);
@@ -92,6 +109,8 @@ export function InventarioView() {
                 key={p.id}
                 producto={p}
                 categoriasOrdenadas={categorias}
+                publicidadAsignada={publicidadPorProducto.get(p.id) ?? 0}
+                unidadesCompradas={compradasPorProducto.get(p.id) ?? 0}
                 onEdit={() => abrirEditar(p)}
                 onDelete={() => eliminar(p)}
               />

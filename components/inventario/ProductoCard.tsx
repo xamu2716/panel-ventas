@@ -1,6 +1,13 @@
 "use client";
 
-import { formatCOP, gananciaUnidad, margenPct, stockBajo } from "@/lib/calc";
+import {
+  costoConPublicidad,
+  formatCOP,
+  gananciaUnidad,
+  margenPct,
+  publicidadPorUnidad,
+  stockBajo,
+} from "@/lib/calc";
 import type { Producto } from "@/lib/types";
 import { Badge } from "@/components/ui";
 import { CategoriaBadge } from "@/components/CategoriaBadge";
@@ -16,17 +23,27 @@ import { IconAlert, IconPencil, IconTrash } from "@/components/icons";
 export function ProductoCard({
   producto,
   categoriasOrdenadas,
+  publicidadAsignada = 0,
+  unidadesCompradas = 0,
   onEdit,
   onDelete,
 }: {
   producto: Producto;
   categoriasOrdenadas: readonly string[];
+  /** Total de gastos de publicidad asignados a esta referencia (tabla gastos_publicidad). */
+  publicidadAsignada?: number;
+  /** Unidades compradas acumuladas (suma de todos sus lotes), base del reparto de esa publicidad. */
+  unidadesCompradas?: number;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const ganancia = gananciaUnidad(producto.precio_venta, producto.costo_unitario);
   const margen = margenPct(producto.precio_venta, producto.costo_unitario);
   const bajo = stockBajo(producto.stock, producto.umbral_stock_bajo);
+  // Valores derivados solo para mostrar: no se guardan ni tocan costo_unitario.
+  const publicidadUnidad = publicidadPorUnidad(publicidadAsignada, unidadesCompradas);
+  const costoReal = costoConPublicidad(producto.costo_unitario, publicidadUnidad);
+  const margenReal = margenPct(producto.precio_venta, costoReal);
 
   return (
     <li className="rounded-md border border-line bg-surface p-4">
@@ -77,6 +94,37 @@ export function ProductoCard({
           </p>
         </div>
       </div>
+
+      {publicidadAsignada > 0 && (
+        <div
+          className="mt-3 grid grid-cols-2 gap-3 rounded-md bg-paper px-3 py-3 text-sm sm:grid-cols-4"
+          aria-label="Publicidad asignada"
+        >
+          <div>
+            <p className="text-ink-muted">Publicidad asignada</p>
+            <p className="tabular font-medium text-ink">{formatCOP(publicidadAsignada)}</p>
+          </div>
+          <div>
+            <p className="text-ink-muted">Publicidad / unidad</p>
+            <p className="tabular font-medium text-ink">{formatCOP(publicidadUnidad)}</p>
+          </div>
+          <div>
+            <p className="text-ink-muted">Costo con publicidad</p>
+            <p className="tabular font-medium text-ink">{formatCOP(costoReal)}</p>
+          </div>
+          <div>
+            <p className="text-ink-muted">Margen real</p>
+            <p className={`tabular font-medium ${margenReal < 0 ? "text-alert" : "text-settled"}`}>
+              {margenReal.toFixed(1)}%
+            </p>
+          </div>
+          <p className="col-span-2 text-xs text-ink-muted sm:col-span-4">
+            {unidadesCompradas > 0
+              ? `Repartida entre las ${unidadesCompradas} unidades compradas. No cambia el costo ni el stock.`
+              : "Sin lotes todavía: la publicidad por unidad se calcula cuando registres su primer lote. No cambia el costo ni el stock."}
+          </p>
+        </div>
+      )}
 
       <div className="mt-3 flex items-center gap-2">
         <span className="text-sm text-ink-muted">Stock:</span>
