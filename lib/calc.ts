@@ -4,6 +4,8 @@
  * no debe escribir ni calcular precio, ganancia o margen a mano.
  */
 
+import type { MetodoImportacion } from "./types";
+
 export type LoteCosto = {
   alibaba: number;
   flete: number;
@@ -21,6 +23,22 @@ export type LoteCosto = {
 export function costoUnitarioLote({ alibaba, flete, publicidad, unidades }: LoteCosto): number {
   if (!unidades || unidades <= 0) return 0;
   return (alibaba + flete + publicidad) / unidades;
+}
+
+/**
+ * Costo unitario de una compra directa (Temu, Shein, local en Bogotá): lo pagado
+ * por la referencia dividido entre sus unidades. No hay flete, seguro, tarifa,
+ * arancel, IVA de nacionalización ni publicidad: es solo `total ÷ unidades`.
+ */
+export function costoUnitarioLoteDirecto({
+  costoMercancia,
+  unidades,
+}: {
+  costoMercancia: number;
+  unidades: number;
+}): number {
+  if (!unidades || unidades <= 0) return 0;
+  return costoMercancia / unidades;
 }
 
 /** IVA fijo de nacionalización usado en el costeo por avión (19%, Colombia). */
@@ -82,7 +100,7 @@ export function prorratear(total: number, unidadesLinea: number, unidadesTotalLo
 }
 
 export type LineaLoteInput = {
-  metodo: "barco" | "avion";
+  metodo: MetodoImportacion;
   costoMercancia: number;
   unidades: number;
   publicidad: number;
@@ -109,6 +127,19 @@ export type LineaLoteResultado = {
  * existente (ver components/inventario/LoteForm.tsx y EditarLoteForm.tsx).
  */
 export function costoUnitarioLineaLote(input: LineaLoteInput): LineaLoteResultado {
+  // Compra directa: no hay costos compartidos que repartir ni impuestos; se
+  // ignora cualquier flete/seguro/tarifa/arancel/publicidad que llegue en el input.
+  if (input.metodo === "directa") {
+    return {
+      fleteAsignado: 0,
+      seguroAsignado: 0,
+      tarifaAsignada: 0,
+      costoUnitario: costoUnitarioLoteDirecto({
+        costoMercancia: input.costoMercancia,
+        unidades: input.unidades,
+      }),
+    };
+  }
   const fleteAsignado = prorratear(input.fleteTotal, input.unidades, input.unidadesTotalLote);
   const seguroAsignado = prorratear(input.seguroTotal, input.unidades, input.unidadesTotalLote);
   const tarifaAsignada = prorratear(input.tarifaAvionTotal, input.unidades, input.unidadesTotalLote);

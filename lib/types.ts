@@ -1,4 +1,16 @@
-export type MetodoImportacion = "barco" | "avion";
+/**
+ * Cómo llegó un lote: por barco o avión (importado, con costos de envío) o
+ * "directa" (compra directa en Temu, Shein o local en Bogotá: sin flete,
+ * seguro, tarifa, arancel ni IVA — solo el total pagado y las unidades).
+ */
+export type MetodoImportacion = "barco" | "avion" | "directa";
+
+/** Texto para mostrar de cada tipo de compra. */
+export const METODO_LABEL: Record<MetodoImportacion, string> = {
+  barco: "Barco",
+  avion: "Avión",
+  directa: "Compra directa",
+};
 
 /**
  * Identidad de una referencia + agregados vivos. El costeo real (de dónde sale
@@ -23,7 +35,8 @@ export type Producto = {
  * Un envío/compra real: costos compartidos entre todas sus líneas (lote_items).
  * `arancel_pct` es del envío completo, no de una referencia — se calcula una
  * sola vez sobre el CIF de toda la caja (costo de mercancía + seguro + flete
- * de TODAS las líneas juntas), igual que el flete o la tarifa aérea.
+ * de TODAS las líneas juntas), igual que el flete o la tarifa aérea. En una
+ * compra directa (`metodo_importacion = "directa"`) todos esos costos son 0.
  */
 export type Lote = {
   id: string;
