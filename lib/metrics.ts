@@ -8,6 +8,7 @@ import {
 } from "./types";
 import {
   costoConPublicidad,
+  fechaLocal,
   gananciaPedido,
   margenPct,
   publicidadPorUnidad,
@@ -61,15 +62,30 @@ export function computeKpis(
   return { ingresos, gananciaNeta, pendiente, stockValorado, gastoPublicidadTotal };
 }
 
-export function ventasPorDia(pedidos: PedidoConProducto[]) {
+/**
+ * Ingresos y ganancia NETA por día. La ganancia de cada día es la de los pedidos
+ * entregados ese día (con el costo de cada pedido al crearlo) menos la
+ * publicidad gastada ese día (`gastos_publicidad.fecha`), así que la suma de
+ * todos los puntos es igual al KPI "Ganancia neta". Un día con publicidad y sin
+ * ventas aparece con ingresos 0 y ganancia negativa. `gastos` debe venir ya
+ * filtrado para la vista (ver `gastosDeVista`). El día se toma en hora LOCAL.
+ */
+export function ventasPorDia(pedidos: PedidoConProducto[], gastos: GastoPublicidad[] = []) {
   const entregados = pedidos.filter((p) => p.estado === "entregado");
-  const map = new Map<string, { ingresos: number; ganancia: number }>();
+  const map = new Map<string, { ingresos: number; ganancia: number; publicidad: number }>();
+  const dia = (fecha: string) => map.get(fecha) ?? { ingresos: 0, ganancia: 0, publicidad: 0 };
   for (const p of entregados) {
-    const fecha = p.estado_actualizado_en.slice(0, 10);
-    const cur = map.get(fecha) ?? { ingresos: 0, ganancia: 0 };
+    const fecha = fechaLocal(p.estado_actualizado_en);
+    const cur = dia(fecha);
     cur.ingresos += totalPedido(p.precio_unitario_snapshot, p.cantidad);
     cur.ganancia += gananciaPedido(p.precio_unitario_snapshot, p.costo_unitario_snapshot, p.cantidad);
     map.set(fecha, cur);
+  }
+  for (const g of gastos) {
+    const cur = dia(g.fecha);
+    cur.publicidad += g.monto;
+    cur.ganancia -= g.monto;
+    map.set(g.fecha, cur);
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
@@ -139,7 +155,7 @@ export function ventasPorProductoEnTiempo(
   for (const p of entregados) {
     const nombre = nombrePorId.get(p.producto_id);
     if (!nombre) continue;
-    const fecha = p.estado_actualizado_en.slice(0, 10);
+    const fecha = fechaLocal(p.estado_actualizado_en);
     const fila = porFecha.get(fecha) ?? {};
     fila[nombre] = (fila[nombre] ?? 0) + p.cantidad;
     porFecha.set(fecha, fila);

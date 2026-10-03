@@ -148,7 +148,7 @@ export function ResumenView() {
           </div>
 
           <div className="mt-8 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <IngresosLineChart data={ventasPorDia(pedidosFiltrados)} />
+            <IngresosLineChart data={ventasPorDia(pedidosFiltrados, gastosVista)} />
             <EstadoBarChart data={pedidosPorEstado(pedidosFiltrados)} />
             <VentasPorProductoChart
               data={ventasPorProducto(pedidosFiltrados, productosFiltrados)}

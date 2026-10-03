@@ -261,6 +261,20 @@ export function formatCOPCompact(valor: number): string {
 }
 
 /**
+ * Fecha LOCAL ("AAAA-MM-DD") de un instante guardado como timestamptz (ej.
+ * `pedidos.estado_actualizado_en`, que llega en UTC). Cortar el texto con
+ * `.slice(0, 10)` toma la fecha UTC y mueve al día siguiente todo lo que pasa
+ * después de las 7 pm en Colombia (UTC-5); por eso se arma con los componentes
+ * locales, igual que `formatFecha`. Úsala para agrupar por día.
+ */
+export function fechaLocal(instanteIso: string): string {
+  const d = new Date(instanteIso);
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const dia = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${mes}-${dia}`;
+}
+
+/**
  * Formatea una fecha para mostrar. Las fechas "solo fecha" de Postgres (columnas
  * `date`, ej. gastos_publicidad.fecha) llegan como "AAAA-MM-DD" sin hora, y
  * `new Date("AAAA-MM-DD")` las interpreta como medianoche UTC — en Colombia

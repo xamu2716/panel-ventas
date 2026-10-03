@@ -59,25 +59,25 @@ function CategoriaLegend({ categorias }: { categorias: readonly string[] }) {
   );
 }
 
-/* 1. Línea de ingresos y ganancia por día */
+/* 1. Línea de ingresos y ganancia NETA (ya resta la publicidad del día) por día */
 export function IngresosLineChart({
   data,
 }: {
-  data: { fecha: string; ingresos: number; ganancia: number }[];
+  data: { fecha: string; ingresos: number; ganancia: number; publicidad: number }[];
 }) {
   return (
     <ChartCard
-      title="Ingresos y ganancia por día"
+      title="Ingresos y ganancia neta por día"
       legend={
         <div className="flex gap-3">
           <LegendDot color={CHART_INGRESOS} label="Ingresos" />
-          <LegendDot color={CHART_GANANCIA} label="Ganancia" />
+          <LegendDot color={CHART_GANANCIA} label="Ganancia neta" />
         </div>
       }
     >
       {data.length === 0 ? (
         <p className="py-10 text-center text-sm text-ink-muted">
-          Aún no hay pedidos entregados para graficar.
+          Aún no hay pedidos entregados ni publicidad para graficar.
         </p>
       ) : (
         <ResponsiveContainer width="100%" height={260}>
@@ -107,7 +107,7 @@ export function IngresosLineChart({
             <Line
               type="monotone"
               dataKey="ganancia"
-              name="Ganancia"
+              name="Ganancia neta"
               stroke={CHART_GANANCIA}
               strokeWidth={2}
               dot={{ r: 4 }}
