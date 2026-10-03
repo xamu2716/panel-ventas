@@ -8,8 +8,10 @@ el detalle completo; `CLAUDE.md` documenta las reglas de trabajo y el mapa del p
 Un solo usuario, sin login, pensado primero para celular. Next.js (App Router) + Supabase (Postgres + tiempo real) + Recharts, desplegado en Vercel.
 
 El costeo de cada producto sale de sus lotes (envíos/compras reales, ver `lotes`/`lote_items` en
-`CLAUDE.md`): Alibaba/proveedor + flete + publicidad, o la fórmula completa de nacionalización si
-viene por avión (CIF + arancel por referencia + IVA + tarifa aérea). Un mismo lote puede traer varias
+`CLAUDE.md`): Alibaba/proveedor + flete + publicidad si viene por barco; la fórmula completa de
+nacionalización si viene por avión (CIF + arancel del envío + IVA + tarifa aérea); o, para una compra
+directa (Temu, Shein o una tienda local, ideal para testear un producto), simplemente el total pagado
+dividido entre las unidades. Un mismo lote puede traer varias
 referencias a la vez, repartiendo sus costos compartidos entre ellas, y cada reabastecimiento
 recalcula el costo del producto como promedio ponderado con lo que ya había en stock — nunca se
 teclea el costo unitario a mano salvo como ajuste puntual editable.
