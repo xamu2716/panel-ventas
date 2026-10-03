@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
-import type { LoteConItems } from "@/lib/types";
+import { METODO_LABEL, type LoteConItems } from "@/lib/types";
 import { formatCOP, formatFecha } from "@/lib/calc";
 import { esLoteEditable, eliminarLote } from "@/lib/lotesSync";
 import { Badge, EmptyState } from "@/components/ui";
@@ -79,7 +79,7 @@ export function LotesHistorial() {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink">{formatFecha(lote.fecha)}</span>
-                  <Badge tone="neutral">{lote.metodo_importacion === "avion" ? "Avión" : "Barco"}</Badge>
+                  <Badge tone="neutral">{METODO_LABEL[lote.metodo_importacion]}</Badge>
                   <span className="text-sm text-ink-muted">{unidadesTotal} unidad(es)</span>
                 </div>
                 {editable && (
@@ -106,9 +106,19 @@ export function LotesHistorial() {
               </div>
 
               <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-                <span>
-                  Flete: <span className="tabular font-medium text-ink">{formatCOP(lote.flete_total)}</span>
-                </span>
+                {lote.metodo_importacion === "directa" ? (
+                  // Compra directa: sin flete ni impuestos, solo lo que se pagó.
+                  <span>
+                    Total pagado:{" "}
+                    <span className="tabular font-medium text-ink">
+                      {formatCOP(lote.lote_items.reduce((a, li) => a + li.costo_mercancia, 0))}
+                    </span>
+                  </span>
+                ) : (
+                  <span>
+                    Flete: <span className="tabular font-medium text-ink">{formatCOP(lote.flete_total)}</span>
+                  </span>
+                )}
                 {lote.metodo_importacion === "avion" && (
                   <>
                     <span>
