@@ -11,7 +11,9 @@ import {
   computeKpis,
   desglosePorProducto,
   distribucionEntrega,
+  gastosDeVista,
   pedidosPorEstado,
+  publicidadPorProductoData,
   stockPorProducto,
   ventasPorCategoria,
   ventasPorDia,
@@ -27,6 +29,7 @@ import {
   EntregaDonutChart,
   EstadoBarChart,
   IngresosLineChart,
+  PublicidadPorProductoChart,
   StockPorProductoChart,
   VentasPorCategoriaChart,
   VentasPorProductoChart,
@@ -83,7 +86,14 @@ export function ResumenView() {
     [pedidos, categoriaSel],
   );
 
-  const kpis = computeKpis(pedidosFiltrados, productosFiltrados, gastos, loteItems);
+  // Con una categoría activa, solo cuentan los gastos de publicidad asignados a
+  // productos de esa categoría (los generales y los de otra categoría no le restan).
+  const gastosVista = useMemo(
+    () => gastosDeVista(gastos, productosFiltrados, categoriaSel !== TODAS),
+    [gastos, productosFiltrados, categoriaSel],
+  );
+
+  const kpis = computeKpis(pedidosFiltrados, productosFiltrados, gastosVista, loteItems);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 md:py-8">
@@ -148,6 +158,10 @@ export function ResumenView() {
               data={capitalPorProducto(productosFiltrados)}
               categoriasOrdenadas={categorias}
             />
+            <PublicidadPorProductoChart
+              data={publicidadPorProductoData(productosFiltrados, gastosVista)}
+              categoriasOrdenadas={categorias}
+            />
             <EntregaDonutChart data={distribucionEntrega(pedidosFiltrados)} />
             <StockPorProductoChart
               data={stockPorProducto(productosFiltrados)}
@@ -169,7 +183,7 @@ export function ResumenView() {
           <div className="mt-8">
             <h2 className="mb-3 font-display text-xl text-ink">Desglose por producto</h2>
             <DesgloseTabla
-              filas={desglosePorProducto(pedidosFiltrados, productosFiltrados)}
+              filas={desglosePorProducto(pedidosFiltrados, productosFiltrados, gastosVista, loteItems)}
               categoriasOrdenadas={categorias}
             />
           </div>

@@ -192,6 +192,48 @@ export function CapitalPorProductoChart({
   );
 }
 
+/* 3b. Barras de publicidad asignada por producto (gastos_publicidad con producto) */
+export function PublicidadPorProductoChart({
+  data,
+  categoriasOrdenadas,
+}: {
+  data: { nombre: string; categoria: string; publicidad: number }[];
+  categoriasOrdenadas: readonly string[];
+}) {
+  return (
+    <ChartCard title="Publicidad por producto" legend={<CategoriaLegend categorias={categoriasOrdenadas} />}>
+      {data.length === 0 ? (
+        <p className="py-10 text-center text-sm text-ink-muted">
+          Todavía no hay publicidad asignada a ningún producto. Asígnala desde la vista Publicidad.
+        </p>
+      ) : (
+        <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
+          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
+            <CartesianGrid stroke={CHART_GRID} horizontal={false} />
+            <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => formatCOPCompact(v)} />
+            <YAxis
+              type="category"
+              dataKey="nombre"
+              tick={axisTick}
+              width={130}
+              tickFormatter={(v: string) => truncar(v)}
+            />
+            <Tooltip
+              contentStyle={tooltipStyle}
+              formatter={(value) => [formatCOP(num(value)), "Publicidad asignada"]}
+            />
+            <Bar dataKey="publicidad" radius={[0, 4, 4, 0]}>
+              {data.map((d) => (
+                <Cell key={d.nombre} fill={colorCategoria(d.categoria, categoriasOrdenadas)} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </ChartCard>
+  );
+}
+
 /* 4. Dona: % pedidos domicilio vs. recoge en casa */
 export function EntregaDonutChart({ data }: { data: { name: string; value: number }[] }) {
   const total = data.reduce((a, d) => a + d.value, 0);
