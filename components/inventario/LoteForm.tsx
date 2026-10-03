@@ -65,6 +65,10 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
 
   const num = (s: string) => (s.trim() === "" ? 0 : Number(s));
 
+  // Compra directa (Temu, Shein, local en Bogotá): sin flete, seguro, tarifa,
+  // arancel, IVA ni publicidad en la línea — el costo es solo total ÷ unidades.
+  const esDirecta = metodo === "directa";
+
   function actualizarItem(key: string, cambios: Partial<Item>) {
     setItems((prev) => prev.map((it) => (it.key === key ? { ...it, ...cambios } : it)));
   }
@@ -92,7 +96,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
       metodo,
       costoMercancia: num(item.costoMercancia),
       unidades: num(item.unidades),
-      publicidad: num(item.publicidad),
+      publicidad: esDirecta ? 0 : num(item.publicidad),
       unidadesTotalLote,
       fleteTotal: num(fleteTotal),
       seguroTotal: num(seguroTotal),
@@ -114,6 +118,9 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
     if (items.length === 0) return "Agrega al menos una referencia.";
     for (const it of items) {
       if (num(it.unidades) <= 0) return "Cada línea necesita unidades mayores a 0.";
+      if (esDirecta && num(it.costoMercancia) <= 0) {
+        return "Escribe cuánto pagaste por cada referencia (el total, mayor a 0).";
+      }
       if (it.modo === "existente" && !it.productoId) return "Elige un producto para cada línea, o marca \"Nueva referencia\".";
       if (it.modo === "nueva") {
         if (!it.nombreNuevo.trim()) return "Escribe el nombre de la referencia nueva.";
@@ -175,7 +182,9 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
       .insert({
         fecha,
         metodo_importacion: metodo,
-        flete_total: num(fleteTotal),
+        // En compra directa no hay costos de envío: se guarda 0 aunque haya
+        // quedado texto escrito en esos campos al cambiar de tipo.
+        flete_total: esDirecta ? 0 : num(fleteTotal),
         seguro_total: metodo === "avion" ? num(seguroTotal) : 0,
         tarifa_avion_total: metodo === "avion" ? num(tarifaAvionTotal) : 0,
         arancel_pct: metodo === "avion" ? num(arancelPct) : 0,
@@ -197,7 +206,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
         producto_id: it.productoIdFinal,
         costo_mercancia: num(it.costoMercancia),
         unidades: num(it.unidades),
-        publicidad: num(it.publicidad),
+        publicidad: esDirecta ? 0 : num(it.publicidad),
         costo_unitario_resultante: costoUnitario,
       });
       if (errItem) {
@@ -237,26 +246,29 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
     <Sheet title="Nuevo lote" onClose={onClose}>
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <p className="text-sm text-ink-muted">
-          Un lote es un envío/compra real. Si trae varias referencias, el flete/seguro/tarifa/arancel
-          se reparte entre ellas según sus unidades.
+          {esDirecta
+            ? "Compra directa (Temu, Shein o una tienda): sin flete ni impuestos. Escribe lo que pagaste por cada referencia y cuántas unidades llegaron; el costo unitario es el total ÷ las unidades."
+            : "Un lote es un envío/compra real. Si trae varias referencias, el flete/seguro/tarifa/arancel se reparte entre ellas según sus unidades."}
         </p>
 
         <Field label="Fecha" htmlFor="fecha">
           <Input id="fecha" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
 
-        <Field label="Método de importación" htmlFor="metodo">
+        <Field label="Tipo de compra" htmlFor="metodo">
           <ToggleGroup
-            name="Método de importación"
+            name="Tipo de compra"
             value={metodo}
             onChange={setMetodo}
             options={[
               { value: "barco", label: "Barco" },
               { value: "avion", label: "Avión" },
+              { value: "directa", label: "Compra directa" },
             ]}
           />
         </Field>
 
+        {!esDirecta && (
         <div className="grid grid-cols-2 gap-3">
           <Field label="Flete total del envío" htmlFor="fleteTotal">
             <MoneyInput id="fleteTotal" value={fleteTotal} onChange={setFleteTotal} placeholder="0" />
@@ -290,6 +302,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
             </>
           )}
         </div>
+        )}
 
         <div className="flex flex-col gap-4">
           <p className="text-sm font-semibold text-ink">Referencias en este lote</p>
@@ -362,7 +375,10 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
                 )}
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="Costo de mercancía" htmlFor={`mercancia-${item.key}`}>
+                  <Field
+                    label={esDirecta ? "Total pagado por esta referencia" : "Costo de mercancía"}
+                    htmlFor={`mercancia-${item.key}`}
+                  >
                     <MoneyInput
                       id={`mercancia-${item.key}`}
                       value={item.costoMercancia}
@@ -379,32 +395,36 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
                       placeholder="Ej. 4"
                     />
                   </Field>
-                  <Field
-                    label="Publicidad (opcional)"
-                    htmlFor={`publicidad-${item.key}`}
-                    hint="Solo si vas a promocionar este lote — no es obligatorio en cada reabastecimiento."
-                  >
-                    <MoneyInput
-                      id={`publicidad-${item.key}`}
-                      value={item.publicidad}
-                      onChange={(v) => actualizarItem(item.key, { publicidad: v })}
-                      placeholder="0"
-                    />
-                  </Field>
+                  {!esDirecta && (
+                    <Field
+                      label="Publicidad (opcional)"
+                      htmlFor={`publicidad-${item.key}`}
+                      hint="Solo si vas a promocionar este lote — no es obligatorio en cada reabastecimiento."
+                    >
+                      <MoneyInput
+                        id={`publicidad-${item.key}`}
+                        value={item.publicidad}
+                        onChange={(v) => actualizarItem(item.key, { publicidad: v })}
+                        placeholder="0"
+                      />
+                    </Field>
+                  )}
                 </div>
 
                 <div className="flex flex-col gap-1 rounded-md border border-line bg-surface px-3 py-2.5 text-xs text-ink-muted">
-                  <p>
-                    Flete asignado: <span className="tabular font-medium text-ink">{formatCOP(fleteAsignado)}</span>
-                    {metodo === "avion" && (
-                      <>
-                        {" · Seguro: "}
-                        <span className="tabular font-medium text-ink">{formatCOP(seguroAsignado)}</span>
-                        {" · Tarifa: "}
-                        <span className="tabular font-medium text-ink">{formatCOP(tarifaAsignada)}</span>
-                      </>
-                    )}
-                  </p>
+                  {!esDirecta && (
+                    <p>
+                      Flete asignado: <span className="tabular font-medium text-ink">{formatCOP(fleteAsignado)}</span>
+                      {metodo === "avion" && (
+                        <>
+                          {" · Seguro: "}
+                          <span className="tabular font-medium text-ink">{formatCOP(seguroAsignado)}</span>
+                          {" · Tarifa: "}
+                          <span className="tabular font-medium text-ink">{formatCOP(tarifaAsignada)}</span>
+                        </>
+                      )}
+                    </p>
+                  )}
                   <p>
                     Costo unitario resultante:{" "}
                     <span className="tabular font-display text-sm text-accent-strong">
@@ -444,7 +464,9 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
             id="notas"
             value={notas}
             onChange={(e) => setNotas(e.target.value)}
-            placeholder="Ej. caja de avión con 4 referencias de Jellycat"
+            placeholder={
+              esDirecta ? "Ej. pedido de prueba en Temu" : "Ej. caja de avión con 4 referencias de Jellycat"
+            }
           />
         </Field>
 
