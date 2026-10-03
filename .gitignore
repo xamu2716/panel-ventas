@@ -42,3 +42,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Solo locales — el repositorio es público: documentación interna de trabajo,
+# contexto del negocio y archivos de Claude Code NO se versionan.
+CLAUDE.md
+contexto.md
+prompt.md
+.claude/
+skills-lock.json
+.playwright-mcp/

@@ -2,13 +2,13 @@
 
 Panel interno de pedidos, inventario, publicidad y simulación de precios para la reventa de
 productos importados (categorías configurables, ej. chaquetas de moto y peluches Jellycat),
-vendidos por Facebook Marketplace. Ver `contexto.md` (negocio) y `prompt.md` (especificación) para
-el detalle completo; `CLAUDE.md` documenta las reglas de trabajo y el mapa del proyecto.
+vendidos por Facebook Marketplace. La documentación interna (contexto del negocio, especificación y
+reglas de trabajo) vive solo en local y no se versiona en este repositorio.
 
 Un solo usuario, sin login, pensado primero para celular. Next.js (App Router) + Supabase (Postgres + tiempo real) + Recharts, desplegado en Vercel.
 
-El costeo de cada producto sale de sus lotes (envíos/compras reales, ver `lotes`/`lote_items` en
-`CLAUDE.md`): Alibaba/proveedor + flete + publicidad si viene por barco; la fórmula completa de
+El costeo de cada producto sale de sus lotes (envíos/compras reales, tablas `lotes` y
+`lote_items`): Alibaba/proveedor + flete + publicidad si viene por barco; la fórmula completa de
 nacionalización si viene por avión (CIF + arancel del envío + IVA + tarifa aérea); o, para una compra
 directa (Temu, Shein o una tienda local, ideal para testear un producto), simplemente el total pagado
 dividido entre las unidades. Un mismo lote puede traer varias
@@ -34,7 +34,7 @@ teclea el costo unitario a mano salvo como ajuste puntual editable.
 
 ## Base de datos
 
-El esquema (`productos`, `lotes`, `lote_items`, `pedidos`, `gastos_publicidad`, triggers de stock y de `estado_actualizado_en`, RLS) vive en el proyecto de Supabase y se administra con migraciones aplicadas vía su MCP; desde el keep-alive cada cambio de esquema también se guarda en `supabase/migrations/` (tabla `heartbeat`, `gastos_publicidad.producto_id` y el tipo de lote `directa`). Ver la sección "Esquema de Supabase" en `CLAUDE.md` para el detalle de tablas y triggers.
+El esquema (`productos`, `lotes`, `lote_items`, `pedidos`, `gastos_publicidad`, triggers de stock y de `estado_actualizado_en`, RLS) vive en el proyecto de Supabase y se administra con migraciones aplicadas vía su MCP; desde el keep-alive cada cambio de esquema también se guarda en `supabase/migrations/` (tabla `heartbeat`, `gastos_publicidad.producto_id` y el tipo de lote `directa`).
 
 ## Despliegue
 
@@ -42,4 +42,4 @@ Desplegado en Vercel. Las variables de entorno (`NEXT_PUBLIC_SUPABASE_URL`, `NEX
 
 ### Keep-alive de Supabase
 
-El plan gratuito de Supabase pausa el proyecto tras 7 días de baja actividad. Un cron de Vercel (`vercel.json`, una vez al día) llama a `GET /api/cron/keep-alive`, que actualiza una fila de la tabla `heartbeat` (no toca las tablas del negocio). Funciona aunque el panel esté protegido con Vercel Authentication. Para comprobarlo: Vercel → Settings → Cron Jobs → Run, y revisar que `heartbeat.last_ping` cambió. Detalles, causas de fallo y rotación de llaves en `CLAUDE.md`.
+El plan gratuito de Supabase pausa el proyecto tras 7 días de baja actividad. Un cron de Vercel (`vercel.json`, una vez al día) llama a `GET /api/cron/keep-alive`, que actualiza una fila de la tabla `heartbeat` (no toca las tablas del negocio). Funciona aunque el panel esté protegido con Vercel Authentication. Para comprobarlo: Vercel → Settings → Cron Jobs → Run, y revisar que `heartbeat.last_ping` cambió.

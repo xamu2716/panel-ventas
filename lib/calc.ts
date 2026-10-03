@@ -1,6 +1,6 @@
 /**
  * Cálculos del negocio, centralizados aquí para que el resto de la app nunca
- * tenga que sacar cuentas por su cuenta. Ver CLAUDE.md / prompt.md: el dueño
+ * tenga que sacar cuentas por su cuenta: el dueño
  * no debe escribir ni calcular precio, ganancia o margen a mano.
  */
 
