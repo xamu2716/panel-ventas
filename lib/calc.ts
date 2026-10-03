@@ -48,10 +48,11 @@ export function cifLote({
 /**
  * Costo unitario derivado del lote completo (importación por avión):
  * ((CIF + arancel) × 1.19) + tarifa aérea + publicidad del lote, repartido
- * entre las unidades del lote. El arancel es un % propio de cada referencia
- * (varía según el producto) aplicado sobre el CIF; el IVA de nacionalización
- * se aplica sobre CIF + arancel. La tarifa aérea y la publicidad son cargos
- * del lote y se prorratean igual que en el costeo por barco.
+ * entre las unidades del lote. El arancel es un % único del ENVÍO completo
+ * (`lotes.arancel_pct`, el mismo para todas sus líneas) aplicado sobre el CIF de
+ * esta línea (ya con su parte prorrateada de seguro y flete); el IVA de
+ * nacionalización se aplica sobre CIF + arancel. La tarifa aérea y la publicidad
+ * del lote NO pagan arancel ni IVA y se prorratean igual que en el costeo por barco.
  */
 export function costoUnitarioLoteAvion({
   alibaba,
@@ -188,6 +189,30 @@ export function gananciaUnidad(precioVenta: number, costoUnitario: number): numb
 export function margenPct(precioVenta: number, costoUnitario: number): number {
   if (!precioVenta || precioVenta <= 0) return 0;
   return (gananciaUnidad(precioVenta, costoUnitario) / precioVenta) * 100;
+}
+
+/**
+ * Publicidad por unidad de una referencia: el total de gastos de publicidad
+ * asignados a ella (tabla `gastos_publicidad`, ej. un boost de $32.000) repartido
+ * entre TODAS las unidades que se han comprado de esa referencia (suma de las
+ * unidades de todos sus lotes: 10 + 10 chaquetas = 20), no entre el stock actual:
+ * así el número no cambia al vender ni con un ajuste manual de stock. Sin
+ * unidades compradas da 0 (evita dividir por cero).
+ */
+export function publicidadPorUnidad(totalAsignado: number, unidadesCompradas: number): number {
+  if (!unidadesCompradas || unidadesCompradas <= 0) return 0;
+  return totalAsignado / unidadesCompradas;
+}
+
+/**
+ * Costo unitario "real" para mirar la rentabilidad de una referencia: su costo
+ * unitario actual (que ya incluye la publicidad que viaja DENTRO de los lotes)
+ * más la publicidad asignada por unidad. Es un valor derivado solo para mostrar:
+ * nunca se guarda en `productos.costo_unitario` (eso inflaría el stock valorado y
+ * contaría la publicidad dos veces en la ganancia neta).
+ */
+export function costoConPublicidad(costoUnitario: number, publicidadUnidad: number): number {
+  return costoUnitario + publicidadUnidad;
 }
 
 export function totalPedido(precioUnitario: number, cantidad: number): number {

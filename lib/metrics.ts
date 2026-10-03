@@ -6,7 +6,13 @@ import {
   type PedidoConProducto,
   type Producto,
 } from "./types";
-import { gananciaPedido, margenPct, totalPedido } from "./calc";
+import {
+  costoConPublicidad,
+  gananciaPedido,
+  margenPct,
+  publicidadPorUnidad,
+  totalPedido,
+} from "./calc";
 
 /**
  * Toda la lógica de agregación para la vista de Resumen, en un solo lugar:
@@ -32,9 +38,12 @@ export function computeKpis(
       acc + gananciaPedido(p.precio_unitario_snapshot, p.costo_unitario_snapshot, p.cantidad),
     0,
   );
+  // `gastos` ya viene filtrado por la vista (ver gastosDeVista): con una categoría
+  // activa solo entran los gastos asignados a productos de esa categoría.
   const gastoExtra = gastos.reduce((acc, g) => acc + g.monto, 0);
   // La publicidad de cada lote ya está prorrateada dentro de costo_unitario_snapshot;
   // solo la publicidad EXTRA del módulo se resta aquí, para no contarla dos veces.
+  // Asignar un gasto a un producto NO cambia este total: solo lo atribuye.
   const gananciaNeta = gananciaBruta - gastoExtra;
   const pendiente = pendientes.reduce(
     (acc, p) => acc + totalPedido(p.precio_unitario_snapshot, p.cantidad),
@@ -181,17 +190,80 @@ export function pedidosPorEstado(pedidos: PedidoConProducto[]) {
   }));
 }
 
-export function desglosePorProducto(pedidos: PedidoConProducto[], productos: Producto[]) {
+/** Unidades compradas por producto: suma de las unidades de todos sus lotes (no el stock actual). */
+export function unidadesCompradasPorProducto(loteItems: LoteItem[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const li of loteItems) map.set(li.producto_id, (map.get(li.producto_id) ?? 0) + li.unidades);
+  return map;
+}
+
+/** Total de gastos de publicidad asignados a cada producto (los gastos generales no cuentan aquí). */
+export function publicidadAsignadaPorProducto(gastos: GastoPublicidad[]): Map<string, number> {
+  const map = new Map<string, number>();
+  for (const g of gastos) {
+    if (!g.producto_id) continue;
+    map.set(g.producto_id, (map.get(g.producto_id) ?? 0) + g.monto);
+  }
+  return map;
+}
+
+/**
+ * Gastos de publicidad que entran en una vista filtrada. Sin filtro ("Todas")
+ * entran todos, incluidos los generales. Con una categoría activa (`productos`
+ * ya son solo los de esa categoría) entran únicamente los asignados a esos
+ * productos: un gasto general o de otra categoría no debe restarle ganancia a
+ * una categoría que no lo causó.
+ */
+export function gastosDeVista(
+  gastos: GastoPublicidad[],
+  productos: Producto[],
+  filtroActivo: boolean,
+): GastoPublicidad[] {
+  if (!filtroActivo) return gastos;
+  const ids = new Set(productos.map((p) => p.id));
+  return gastos.filter((g) => g.producto_id !== null && ids.has(g.producto_id));
+}
+
+/** Publicidad asignada por producto (solo los que tienen), para la gráfica "Publicidad por producto". */
+export function publicidadPorProductoData(productos: Producto[], gastos: GastoPublicidad[]) {
+  const asignada = publicidadAsignadaPorProducto(gastos);
+  return productos
+    .map((p) => ({ nombre: p.nombre, categoria: p.categoria, publicidad: asignada.get(p.id) ?? 0 }))
+    .filter((f) => f.publicidad > 0);
+}
+
+export function desglosePorProducto(
+  pedidos: PedidoConProducto[],
+  productos: Producto[],
+  gastos: GastoPublicidad[] = [],
+  loteItems: LoteItem[] = [],
+) {
+  const asignada = publicidadAsignadaPorProducto(gastos);
+  const compradas = unidadesCompradasPorProducto(loteItems);
   return productos.map((prod) => {
     const deProd = pedidos.filter((p) => p.producto_id === prod.id);
+    const entregados = deProd.filter((p) => p.estado === "entregado");
+    const publicidad = asignada.get(prod.id) ?? 0;
+    const porUnidad = publicidadPorUnidad(publicidad, compradas.get(prod.id) ?? 0);
+    const costoReal = costoConPublicidad(prod.costo_unitario, porUnidad);
+    // Ganancia de lo ya entregado (con el costo de cada pedido al momento de
+    // crearlo) menos la publicidad asignada a la referencia.
+    const gananciaEntregados = entregados.reduce(
+      (a, p) => a + gananciaPedido(p.precio_unitario_snapshot, p.costo_unitario_snapshot, p.cantidad),
+      0,
+    );
     return {
       nombre: prod.nombre,
       categoria: prod.categoria,
-      vendido: deProd.filter((p) => p.estado === "entregado").reduce((a, p) => a + p.cantidad, 0),
+      vendido: entregados.reduce((a, p) => a + p.cantidad, 0),
       pendiente: deProd
         .filter((p) => p.estado !== "entregado")
         .reduce((a, p) => a + p.cantidad, 0),
       margen: margenPct(prod.precio_venta, prod.costo_unitario),
+      publicidad,
+      costoReal,
+      margenReal: margenPct(prod.precio_venta, costoReal),
+      gananciaNeta: gananciaEntregados - publicidad,
     };
   });
 }

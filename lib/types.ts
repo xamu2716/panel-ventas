@@ -93,5 +93,11 @@ export type GastoPublicidad = {
   fecha: string;
   monto: number;
   nota: string | null;
+  /**
+   * Referencia a la que se atribuye el gasto (ej. un boost de una publicación).
+   * null = gasto general. Es solo atribución: no modifica el costo_unitario ni
+   * el stock del producto.
+   */
+  producto_id: string | null;
   created_at: string;
 };
