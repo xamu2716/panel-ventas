@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { Button, Field, Input, Select, Sheet, Textarea, ToggleGroup } from "@/components/ui";
+import { Button, Field, Input, MoneyInput, Select, Sheet, Textarea, ToggleGroup } from "@/components/ui";
 import { supabase } from "@/lib/supabaseClient";
-import { formatCOP, gananciaPedido, totalPedido } from "@/lib/calc";
+import { formatCOP, gananciaPedido, rebajaPct, totalPedido } from "@/lib/calc";
 import type { PedidoConProducto, Producto, TipoEntrega } from "@/lib/types";
 
 type Props = {
@@ -26,11 +26,13 @@ export function PedidoForm({ productos, pedido, onClose, onSaved }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Snapshot de precio/costo: al crear, siempre el del producto elegido; al
-  // editar, se conserva el original salvo que el usuario cambie de producto
-  // (así el histórico no se mueve solo porque el costo del producto cambió).
-  const [snapshotPrecio, setSnapshotPrecio] = useState(
-    pedido?.precio_unitario_snapshot ?? productos[0]?.precio_venta ?? 0,
+  // Precio al que se le vende a ESTE cliente (cada pedido guarda el suyo: en
+  // Marketplace se publica más alto y se rebaja según el comprador). Al crear se
+  // sugiere el precio publicado del producto; al editar se conserva el del pedido.
+  // El costo se congela al crear (o al cambiar de producto) para que el histórico
+  // no se mueva solo porque el costo del producto cambie después.
+  const [precio, setPrecio] = useState(
+    String(pedido?.precio_unitario_snapshot ?? productos[0]?.precio_venta ?? ""),
   );
   const [snapshotCosto, setSnapshotCosto] = useState(
     pedido?.costo_unitario_snapshot ?? productos[0]?.costo_unitario ?? 0,
@@ -38,15 +40,18 @@ export function PedidoForm({ productos, pedido, onClose, onSaved }: Props) {
 
   const productoSeleccionado = productos.find((p) => p.id === productoId);
   const cantidadNum = Number(cantidad) || 0;
-  const total = totalPedido(snapshotPrecio, cantidadNum);
-  const ganancia = gananciaPedido(snapshotPrecio, snapshotCosto, cantidadNum);
+  const precioNum = Number(precio) || 0;
+  const total = totalPedido(precioNum, cantidadNum);
+  const ganancia = gananciaPedido(precioNum, snapshotCosto, cantidadNum);
   const excedeStock = !!productoSeleccionado && cantidadNum > productoSeleccionado.stock;
+  const publicado = productoSeleccionado?.precio_venta ?? 0;
+  const rebaja = rebajaPct(publicado, precioNum);
 
   function handleProductoChange(id: string) {
     setProductoId(id);
     const p = productos.find((x) => x.id === id);
     if (p) {
-      setSnapshotPrecio(p.precio_venta);
+      setPrecio(String(p.precio_venta));
       setSnapshotCosto(p.costo_unitario);
     }
   }
@@ -67,6 +72,10 @@ export function PedidoForm({ productos, pedido, onClose, onSaved }: Props) {
       setError("La cantidad debe ser al menos 1.");
       return;
     }
+    if (precioNum <= 0) {
+      setError("Escribe el precio al que le vendes (por unidad).");
+      return;
+    }
     if (tipoEntrega === "domicilio" && !direccion.trim()) {
       setError("Escribe la dirección de entrega.");
       return;
@@ -81,7 +90,7 @@ export function PedidoForm({ productos, pedido, onClose, onSaved }: Props) {
       tipo_entrega: tipoEntrega,
       direccion: tipoEntrega === "domicilio" ? direccion.trim() : null,
       notas: notas.trim() || null,
-      precio_unitario_snapshot: snapshotPrecio,
+      precio_unitario_snapshot: precioNum,
       costo_unitario_snapshot: snapshotCosto,
     };
 
@@ -132,7 +141,7 @@ export function PedidoForm({ productos, pedido, onClose, onSaved }: Props) {
             {productos.length === 0 && <option value="">No hay productos en inventario</option>}
             {productos.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.nombre} — {formatCOP(p.precio_venta)}
+                {p.nombre} — publicado {formatCOP(p.precio_venta)}
               </option>
             ))}
           </Select>
@@ -155,6 +164,26 @@ export function PedidoForm({ productos, pedido, onClose, onSaved }: Props) {
             no podrás marcarlo &quot;Entregado&quot; sin stock suficiente.
           </p>
         )}
+
+        <Field label="Precio de venta (por unidad)" htmlFor="precio">
+          <MoneyInput
+            id="precio"
+            value={precio}
+            onChange={setPrecio}
+            placeholder="0"
+            aria-describedby="precio-ayuda"
+            required
+          />
+        </Field>
+        <p id="precio-ayuda" className="-mt-3 text-xs text-ink-muted">
+          Precio publicado: {formatCOP(publicado)}
+          {precioNum > 0 && rebaja > 0 && (
+            <>
+              {" "}· rebaja de {formatCOP(publicado - precioNum)} ({rebaja.toFixed(1)} %)
+            </>
+          )}
+          {precioNum > publicado && publicado > 0 && <> · por encima del publicado</>}
+        </p>
 
         <Field label="Entrega" htmlFor="entrega">
           <ToggleGroup
