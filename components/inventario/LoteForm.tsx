@@ -125,7 +125,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
       if (it.modo === "nueva") {
         if (!it.nombreNuevo.trim()) return "Escribe el nombre de la referencia nueva.";
         if (!it.categoriaNueva.trim()) return "Escribe la categoría de la referencia nueva.";
-        if (num(it.precioVentaNueva) <= 0) return "El precio de venta de la referencia nueva debe ser mayor a 0.";
+        if (num(it.precioVentaNueva) <= 0) return "El precio publicado de la referencia nueva debe ser mayor a 0.";
       }
     }
     return null;
@@ -363,7 +363,7 @@ export function LoteForm({ productos, categoriasExistentes, onClose, onSaved }: 
                       categoriasExistentes={categoriasExistentes}
                       idPrefix={`lote-${item.key}`}
                     />
-                    <Field label="Precio de venta" htmlFor={`precio-${item.key}`}>
+                    <Field label="Precio publicado (referencia)" htmlFor={`precio-${item.key}`}>
                       <MoneyInput
                         id={`precio-${item.key}`}
                         value={item.precioVentaNueva}

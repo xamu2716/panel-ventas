@@ -96,9 +96,13 @@ export function ProductoForm({ producto, categoriasExistentes, onClose, onSaved 
           idPrefix="producto"
         />
 
-        <Field label="Precio de venta (por unidad)" htmlFor="precioVenta">
+        <Field label="Precio publicado (por unidad, referencia)" htmlFor="precioVenta">
           <MoneyInput id="precioVenta" value={precioVenta} onChange={setPrecioVenta} placeholder="0" required />
         </Field>
+        <p className="-mt-3 text-xs text-ink-muted">
+          Solo es una referencia y la sugerencia al crear pedidos. Cada pedido guarda el precio real
+          al que vendiste, y las ganancias salen de ese precio.
+        </p>
 
         <Field label="Aviso de stock bajo cuando queden" htmlFor="umbral">
           <Input
