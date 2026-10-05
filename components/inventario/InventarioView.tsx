@@ -3,12 +3,13 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRealtimeQuery } from "@/lib/useRealtimeQuery";
-import type { GastoPublicidad, LoteItem, Producto } from "@/lib/types";
+import type { GastoPublicidad, LoteItem, PedidoConProducto, Producto } from "@/lib/types";
 import {
   categoriasDisponibles,
   publicidadAsignadaPorProducto,
   unidadesCompradasPorProducto,
 } from "@/lib/metrics";
+import { resumenVentas } from "@/lib/calc";
 import { Button, EmptyState } from "@/components/ui";
 import { IconBox, IconPlus } from "@/components/icons";
 import { ProductoForm } from "./ProductoForm";
@@ -24,6 +25,10 @@ async function fetchGastos() {
   return supabase.from("gastos_publicidad").select("*");
 }
 
+async function fetchPedidos() {
+  return supabase.from("pedidos").select("*, producto:productos(id, nombre, categoria)");
+}
+
 async function fetchLoteItems() {
   return supabase.from("lote_items").select("*");
 }
@@ -36,6 +41,16 @@ export function InventarioView() {
   // Para mostrar la publicidad asignada a cada referencia y su costo con publicidad.
   const { data: gastos } = useRealtimeQuery<GastoPublicidad>("gastos_publicidad", fetchGastos);
   const { data: loteItems } = useRealtimeQuery<LoteItem>("lote_items", fetchLoteItems);
+  // Lo realmente vendido (cada pedido con su propio precio) alimenta la rentabilidad de cada tarjeta.
+  const { data: pedidos } = useRealtimeQuery<PedidoConProducto>("pedidos", fetchPedidos);
+  const ventasPorProducto = useMemo(() => {
+    const porProducto = new Map<string, PedidoConProducto[]>();
+    for (const p of pedidos) {
+      if (p.estado !== "entregado") continue;
+      porProducto.set(p.producto_id, [...(porProducto.get(p.producto_id) ?? []), p]);
+    }
+    return new Map([...porProducto].map(([id, lista]) => [id, resumenVentas(lista)]));
+  }, [pedidos]);
   const publicidadPorProducto = useMemo(() => publicidadAsignadaPorProducto(gastos), [gastos]);
   const compradasPorProducto = useMemo(() => unidadesCompradasPorProducto(loteItems), [loteItems]);
   const [formOpen, setFormOpen] = useState(false);
@@ -111,6 +126,7 @@ export function InventarioView() {
                 categoriasOrdenadas={categorias}
                 publicidadAsignada={publicidadPorProducto.get(p.id) ?? 0}
                 unidadesCompradas={compradasPorProducto.get(p.id) ?? 0}
+                ventas={ventasPorProducto.get(p.id) ?? resumenVentas([])}
                 onEdit={() => abrirEditar(p)}
                 onDelete={() => eliminar(p)}
               />

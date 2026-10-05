@@ -48,6 +48,29 @@ function num(v: unknown): number {
   return typeof v === "number" ? v : Number(v) || 0;
 }
 
+/**
+ * Tooltip de las gráficas de ventas: lo cobrado de verdad (suma de los precios a los
+ * que se vendió cada unidad), la ganancia contra lo que costó y las unidades.
+ */
+function VentasTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: { payload: { nombre?: string; categoria: string; unidades: number; ingresos: number; ganancia: number } }[];
+}) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={tooltipStyle} className="px-3 py-2">
+      <p className="font-medium text-ink">{d.nombre ?? d.categoria}</p>
+      <p>Ingresos: {formatCOP(d.ingresos)}</p>
+      <p>Ganancia: {formatCOP(d.ganancia)}</p>
+      <p>Vendido: {d.unidades} unidad(es)</p>
+    </div>
+  );
+}
+
 /** Leyenda de categorías dinámica: una LegendDot por cada categoría presente. */
 function CategoriaLegend({ categorias }: { categorias: readonly string[] }) {
   return (
@@ -120,12 +143,12 @@ export function IngresosLineChart({
   );
 }
 
-/* 2. Barras de ventas (unidades entregadas) por producto */
+/* 2. Barras de ingresos reales (suma de lo cobrado en cada pedido entregado) por producto */
 export function VentasPorProductoChart({
   data,
   categoriasOrdenadas,
 }: {
-  data: { nombre: string; categoria: string; unidades: number }[];
+  data: { nombre: string; categoria: string; unidades: number; ingresos: number; ganancia: number }[];
   categoriasOrdenadas: readonly string[];
 }) {
   return (
@@ -133,7 +156,7 @@ export function VentasPorProductoChart({
       <ResponsiveContainer width="100%" height={Math.max(180, data.length * 42)}>
         <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
           <CartesianGrid stroke={CHART_GRID} horizontal={false} />
-          <XAxis type="number" tick={axisTick} allowDecimals={false} />
+          <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => formatCOPCompact(v)} />
           <YAxis
             type="category"
             dataKey="nombre"
@@ -141,11 +164,8 @@ export function VentasPorProductoChart({
             width={130}
             tickFormatter={(v: string) => truncar(v)}
           />
-          <Tooltip
-            contentStyle={tooltipStyle}
-            formatter={(value) => [`${num(value)} unidad(es)`, "Vendido"]}
-          />
-          <Bar dataKey="unidades" radius={[0, 4, 4, 0]}>
+          <Tooltip content={<VentasTooltip />} />
+          <Bar dataKey="ingresos" radius={[0, 4, 4, 0]}>
             {data.map((d) => (
               <Cell key={d.nombre} fill={colorCategoria(d.categoria, categoriasOrdenadas)} />
             ))}
@@ -314,11 +334,11 @@ export function StockPorProductoChart({
   );
 }
 
-/* 7. Barras de ventas (unidades + ingresos) agregadas por categoría */
+/* 7. Barras de ingresos reales (suma de lo cobrado en cada pedido entregado) por categoría */
 export function VentasPorCategoriaChart({
   data,
 }: {
-  data: { categoria: string; unidades: number; ingresos: number }[];
+  data: { categoria: string; unidades: number; ingresos: number; ganancia: number }[];
 }) {
   const categorias = data.map((d) => d.categoria);
   return (
@@ -331,15 +351,10 @@ export function VentasPorCategoriaChart({
         <ResponsiveContainer width="100%" height={Math.max(180, data.length * 46)}>
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 0, bottom: 0 }}>
             <CartesianGrid stroke={CHART_GRID} horizontal={false} />
-            <XAxis type="number" tick={axisTick} allowDecimals={false} />
+            <XAxis type="number" tick={axisTick} tickFormatter={(v: number) => formatCOPCompact(v)} />
             <YAxis type="category" dataKey="categoria" tick={axisTick} width={110} />
-            <Tooltip
-              contentStyle={tooltipStyle}
-              formatter={(value, name) =>
-                name === "ingresos" ? [formatCOP(num(value)), "Ingresos"] : [`${num(value)} unidad(es)`, "Vendido"]
-              }
-            />
-            <Bar dataKey="unidades" radius={[0, 4, 4, 0]}>
+            <Tooltip content={<VentasTooltip />} />
+            <Bar dataKey="ingresos" radius={[0, 4, 4, 0]}>
               {data.map((d) => (
                 <Cell key={d.categoria} fill={colorCategoria(d.categoria, categorias)} />
               ))}

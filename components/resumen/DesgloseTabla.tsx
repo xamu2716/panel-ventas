@@ -6,9 +6,13 @@ type Fila = {
   categoria: string;
   vendido: number;
   pendiente: number;
+  /** Suma de lo cobrado en los pedidos entregados (cada uno a su propio precio). */
+  ingresos: number;
+  /** Ingresos ÷ unidades vendidas. */
+  precioPromedio: number;
   /** Publicidad asignada a la referencia (gastos_publicidad.producto_id). */
   publicidad: number;
-  /** Margen con la publicidad asignada repartida entre las unidades compradas; igual al margen normal si no hay. */
+  /** Margen sobre lo realmente vendido, con la publicidad asignada repartida entre las unidades compradas. */
   margenReal: number;
   /** Ganancia de lo entregado menos la publicidad asignada. */
   gananciaNeta: number;
@@ -26,13 +30,15 @@ export function DesgloseTabla({
   }
   return (
     <div className="overflow-x-auto rounded-md border border-line">
-      <table className="w-full min-w-[680px] text-sm">
+      <table className="w-full min-w-[840px] text-sm">
         <thead>
           <tr className="border-b border-line bg-paper/60 text-left text-ink-muted">
             <th className="px-4 py-2.5 font-medium">Producto</th>
             <th className="px-4 py-2.5 font-medium">Categoría</th>
             <th className="px-4 py-2.5 text-right font-medium">Vendido</th>
             <th className="px-4 py-2.5 text-right font-medium">Pendiente</th>
+            <th className="px-4 py-2.5 text-right font-medium">Ingresos</th>
+            <th className="px-4 py-2.5 text-right font-medium">Precio prom.</th>
             <th className="px-4 py-2.5 text-right font-medium">Publicidad</th>
             <th className="px-4 py-2.5 text-right font-medium">Margen real</th>
             <th className="px-4 py-2.5 text-right font-medium">Ganancia neta</th>
@@ -47,13 +53,17 @@ export function DesgloseTabla({
               </td>
               <td className="tabular px-4 py-2.5 text-right text-ink">{f.vendido}</td>
               <td className="tabular px-4 py-2.5 text-right text-ink">{f.pendiente}</td>
+              <td className="tabular px-4 py-2.5 text-right text-ink">{formatCOP(f.ingresos)}</td>
+              <td className="tabular px-4 py-2.5 text-right text-ink">
+                {f.vendido > 0 ? formatCOP(f.precioPromedio) : "—"}
+              </td>
               <td className="tabular px-4 py-2.5 text-right text-ink">{formatCOP(f.publicidad)}</td>
               <td
                 className={`tabular px-4 py-2.5 text-right font-medium ${
                   f.margenReal < 0 ? "text-alert" : "text-settled"
                 }`}
               >
-                {f.margenReal.toFixed(1)}%
+                {f.vendido > 0 ? `${f.margenReal.toFixed(1)}%` : "—"}
               </td>
               <td
                 className={`tabular px-4 py-2.5 text-right font-medium ${

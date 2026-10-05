@@ -3,10 +3,11 @@
 import {
   costoConPublicidad,
   formatCOP,
-  gananciaUnidad,
-  margenPct,
+  margenRealPct,
   publicidadPorUnidad,
+  rebajaPct,
   stockBajo,
+  type ResumenVentas,
 } from "@/lib/calc";
 import type { Producto } from "@/lib/types";
 import { Badge } from "@/components/ui";
@@ -25,6 +26,7 @@ export function ProductoCard({
   categoriasOrdenadas,
   publicidadAsignada = 0,
   unidadesCompradas = 0,
+  ventas,
   onEdit,
   onDelete,
 }: {
@@ -34,16 +36,19 @@ export function ProductoCard({
   publicidadAsignada?: number;
   /** Unidades compradas acumuladas (suma de todos sus lotes), base del reparto de esa publicidad. */
   unidadesCompradas?: number;
+  /** Lo realmente vendido (pedidos entregados, cada uno a su propio precio). */
+  ventas: ResumenVentas;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const ganancia = gananciaUnidad(producto.precio_venta, producto.costo_unitario);
-  const margen = margenPct(producto.precio_venta, producto.costo_unitario);
+  // La rentabilidad sale de lo realmente vendido; el precio publicado es solo referencia.
+  const hayVentas = ventas.unidades > 0;
+  const rebaja = rebajaPct(producto.precio_venta, ventas.precioPromedio);
   const bajo = stockBajo(producto.stock, producto.umbral_stock_bajo);
   // Valores derivados solo para mostrar: no se guardan ni tocan costo_unitario.
   const publicidadUnidad = publicidadPorUnidad(publicidadAsignada, unidadesCompradas);
   const costoReal = costoConPublicidad(producto.costo_unitario, publicidadUnidad);
-  const margenReal = margenPct(producto.precio_venta, costoReal);
+  const margenReal = margenRealPct(ventas, publicidadUnidad);
 
   return (
     <li className="rounded-md border border-line bg-surface p-4">
@@ -78,21 +83,38 @@ export function ProductoCard({
           <p className="tabular font-medium text-ink">{formatCOP(producto.costo_unitario)}</p>
         </div>
         <div>
-          <p className="text-ink-muted">Precio venta</p>
-          <p className="tabular font-medium text-ink">{formatCOP(producto.precio_venta)}</p>
+          <p className="text-ink-muted">Precio publicado</p>
+          <p className="tabular font-medium text-ink-muted">{formatCOP(producto.precio_venta)}</p>
         </div>
-        <div>
-          <p className="text-ink-muted">Ganancia / unidad</p>
-          <p className={`tabular font-medium ${ganancia < 0 ? "text-alert" : "text-settled"}`}>
-            {formatCOP(ganancia)}
-          </p>
-        </div>
-        <div>
-          <p className="text-ink-muted">Margen</p>
-          <p className={`tabular font-medium ${margen < 0 ? "text-alert" : "text-settled"}`}>
-            {margen.toFixed(1)}%
-          </p>
-        </div>
+        {hayVentas ? (
+          <>
+            <div>
+              <p className="text-ink-muted">Vendido ({ventas.unidades} u.)</p>
+              <p className="tabular font-medium text-ink">{formatCOP(ventas.ingresos)}</p>
+            </div>
+            <div>
+              <p className="text-ink-muted">Precio prom. vendido</p>
+              <p className="tabular font-medium text-ink">{formatCOP(ventas.precioPromedio)}</p>
+              {rebaja > 0 && (
+                <p className="tabular text-xs text-ink-muted">{rebaja.toFixed(1)} % bajo el publicado</p>
+              )}
+            </div>
+            <div>
+              <p className="text-ink-muted">Ganancia acumulada</p>
+              <p className={`tabular font-medium ${ventas.ganancia < 0 ? "text-alert" : "text-settled"}`}>
+                {formatCOP(ventas.ganancia)}
+              </p>
+            </div>
+            <div>
+              <p className="text-ink-muted">Margen real</p>
+              <p className={`tabular font-medium ${ventas.margenPct < 0 ? "text-alert" : "text-settled"}`}>
+                {ventas.margenPct.toFixed(1)}%
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="col-span-2 text-ink-muted">Sin ventas todavía</p>
+        )}
       </div>
 
       {publicidadAsignada > 0 && (
@@ -113,9 +135,9 @@ export function ProductoCard({
             <p className="tabular font-medium text-ink">{formatCOP(costoReal)}</p>
           </div>
           <div>
-            <p className="text-ink-muted">Margen real</p>
+            <p className="text-ink-muted">Margen real c/ publicidad</p>
             <p className={`tabular font-medium ${margenReal < 0 ? "text-alert" : "text-settled"}`}>
-              {margenReal.toFixed(1)}%
+              {hayVentas ? `${margenReal.toFixed(1)}%` : "Sin ventas"}
             </p>
           </div>
           <p className="col-span-2 text-xs text-ink-muted sm:col-span-4">

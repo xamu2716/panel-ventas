@@ -10,8 +10,9 @@ import {
   costoConPublicidad,
   fechaLocal,
   gananciaPedido,
-  margenPct,
+  margenRealPct,
   publicidadPorUnidad,
+  resumenVentas,
   totalPedido,
 } from "./calc";
 
@@ -96,21 +97,10 @@ export function ventasPorProducto(pedidos: PedidoConProducto[], productos: Produ
   const entregados = pedidos.filter((p) => p.estado === "entregado");
   return productos.map((prod) => {
     const suyos = entregados.filter((p) => p.producto_id === prod.id);
-    return {
-      nombre: prod.nombre,
-      categoria: prod.categoria,
-      unidades: suyos.reduce((a, p) => a + p.cantidad, 0),
-      ingresos: suyos.reduce((a, p) => a + totalPedido(p.precio_unitario_snapshot, p.cantidad), 0),
-    };
+    // Cada pedido aporta su propio precio de venta: el precio publicado no interviene.
+    const { unidades, ingresos, ganancia } = resumenVentas(suyos);
+    return { nombre: prod.nombre, categoria: prod.categoria, unidades, ingresos, ganancia };
   });
-}
-
-export function margenPorProducto(productos: Producto[]) {
-  return productos.map((p) => ({
-    nombre: p.nombre,
-    categoria: p.categoria,
-    margen: margenPct(p.precio_venta, p.costo_unitario),
-  }));
 }
 
 /** Capital invertido (stock actual × costo unitario) por producto — cuánta plata hay parada. */
@@ -166,7 +156,7 @@ export function ventasPorProductoEnTiempo(
     .map(([fecha, unidadesPorProducto]) => ({ fecha, ...unidadesPorProducto }));
 }
 
-/** Unidades entregadas e ingresos agregados por categoría (vista "Todas"). */
+/** Unidades, ingresos y ganancia reales (precio de cada pedido) agregados por categoría (vista "Todas"). */
 export function ventasPorCategoria(pedidos: PedidoConProducto[], productos: Producto[]) {
   const entregados = pedidos.filter((p) => p.estado === "entregado");
   const productoPorId = new Map(productos.map((p) => [p.id, p]));
@@ -174,11 +164,8 @@ export function ventasPorCategoria(pedidos: PedidoConProducto[], productos: Prod
 
   return categorias.map((categoria) => {
     const deCategoria = entregados.filter((p) => productoPorId.get(p.producto_id)?.categoria === categoria);
-    return {
-      categoria,
-      unidades: deCategoria.reduce((a, p) => a + p.cantidad, 0),
-      ingresos: deCategoria.reduce((a, p) => a + totalPedido(p.precio_unitario_snapshot, p.cantidad), 0),
-    };
+    const { unidades, ingresos, ganancia } = resumenVentas(deCategoria);
+    return { categoria, unidades, ingresos, ganancia };
   });
 }
 
@@ -261,25 +248,26 @@ export function desglosePorProducto(
     const entregados = deProd.filter((p) => p.estado === "entregado");
     const publicidad = asignada.get(prod.id) ?? 0;
     const porUnidad = publicidadPorUnidad(publicidad, compradas.get(prod.id) ?? 0);
-    const costoReal = costoConPublicidad(prod.costo_unitario, porUnidad);
-    // Ganancia de lo ya entregado (con el costo de cada pedido al momento de
-    // crearlo) menos la publicidad asignada a la referencia.
-    const gananciaEntregados = entregados.reduce(
-      (a, p) => a + gananciaPedido(p.precio_unitario_snapshot, p.costo_unitario_snapshot, p.cantidad),
-      0,
-    );
+    // Todo sale de lo realmente vendido: cada pedido entregado aporta su propio
+    // precio y su propio costo. El precio publicado del producto no entra.
+    const ventas = resumenVentas(entregados);
     return {
       nombre: prod.nombre,
       categoria: prod.categoria,
-      vendido: entregados.reduce((a, p) => a + p.cantidad, 0),
+      vendido: ventas.unidades,
       pendiente: deProd
         .filter((p) => p.estado !== "entregado")
         .reduce((a, p) => a + p.cantidad, 0),
-      margen: margenPct(prod.precio_venta, prod.costo_unitario),
+      ingresos: ventas.ingresos,
+      precioPromedio: ventas.precioPromedio,
+      margen: ventas.margenPct,
       publicidad,
-      costoReal,
-      margenReal: margenPct(prod.precio_venta, costoReal),
-      gananciaNeta: gananciaEntregados - publicidad,
+      // Costo actual + publicidad por unidad, y margen sobre lo realmente vendido.
+      costoReal: costoConPublicidad(prod.costo_unitario, porUnidad),
+      margenReal: margenRealPct(ventas, porUnidad),
+      // Ganancia de lo entregado (con el costo de cada pedido al momento de
+      // crearlo) menos la publicidad asignada a la referencia.
+      gananciaNeta: ventas.ganancia - publicidad,
     };
   });
 }
