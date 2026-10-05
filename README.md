@@ -27,7 +27,7 @@ ganancia, márgenes y gráficas se calculan sumando los precios reales de lo ven
    ```bash
    npm install
    ```
-2. Copia `.env.example` a `.env.local` y completa las variables. `NEXT_PUBLIC_SUPABASE_URL` es la URL de tu proyecto de Supabase y `NEXT_PUBLIC_SUPABASE_ANON_KEY` es la **publishable key** (`sb_publishable_...`, Settings → API Keys; el nombre de la variable se conserva por compatibilidad). `SUPABASE_SERVICE_ROLE_KEY` (una **secret key** `sb_secret_...`) y `CRON_SECRET` (texto aleatorio, por ejemplo `openssl rand -hex 32`) solo hacen falta para probar el endpoint de keep-alive; son solo de servidor y nunca se versionan. Las llaves JWT legacy (`anon`/`service_role`) están desactivadas en este proyecto:
+2. Copia `.env.example` a `.env.local` y completa las variables. `NEXT_PUBLIC_SUPABASE_URL` es la URL de tu proyecto de Supabase y `NEXT_PUBLIC_SUPABASE_ANON_KEY` es la **publishable key** (`sb_publishable_...`, Settings → API Keys; el nombre de la variable se conserva por compatibilidad). `SUPABASE_SERVICE_ROLE_KEY` (una **secret key** `sb_secret_...`) y `CRON_SECRET` (texto aleatorio, por ejemplo `openssl rand -hex 32`) solo hacen falta para probar el endpoint de keep-alive; son solo de servidor y nunca se versionan. Las llaves JWT legacy (`anon`/`service_role`) están desactivadas en este proyecto.
    ```bash
    cp .env.example .env.local
    ```
@@ -47,4 +47,4 @@ Desplegado en Vercel. Las variables de entorno (`NEXT_PUBLIC_SUPABASE_URL`, `NEX
 
 ### Keep-alive de Supabase
 
-El plan gratuito de Supabase pausa el proyecto tras 7 días de baja actividad. Un cron de Vercel (`vercel.json`, una vez al día) llama a `GET /api/cron/keep-alive`, que actualiza una fila de la tabla `heartbeat` (no toca las tablas del negocio). Funciona aunque el panel esté protegido con Vercel Authentication. Para comprobarlo: Vercel → Settings → Cron Jobs → Run, y revisar que `heartbeat.last_ping` cambió.
+El plan gratuito de Supabase pausa el proyecto tras 7 días de baja actividad. Un cron de Vercel (`vercel.json`, una vez al día) llama a `GET /api/cron/keep-alive`, que actualiza una fila de la tabla `heartbeat` (no toca las tablas del negocio). Funciona aunque el panel esté protegido con Vercel Authentication. Para comprobarlo: Vercel → Settings → Cron Jobs → Run, y revisar que `heartbeat.last_ping` cambió. En el plan Hobby los logs de Vercel solo duran una hora; para ver ejecuciones anteriores se usan `heartbeat.last_ping`, el contador `pg_stat_user_tables` de esa tabla o los logs de la API de Supabase (Logs Explorer, filtrando por `heartbeat`).

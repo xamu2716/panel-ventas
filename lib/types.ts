@@ -24,6 +24,11 @@ export type Producto = {
   nombre: string;
   categoria: string;
   costo_unitario: number;
+  /**
+   * Precio PUBLICADO (referencia): se sugiere al crear un pedido, pero el precio real
+   * de cada venta vive en `Pedido.precio_unitario_snapshot`. Ningún ingreso, ganancia
+   * ni margen debe calcularse con este campo (ver `resumenVentas` en lib/calc.ts).
+   */
   precio_venta: number;
   stock: number;
   umbral_stock_bajo: number;
@@ -89,7 +94,9 @@ export type Pedido = {
   direccion: string | null;
   estado: EstadoPedido;
   notas: string | null;
+  /** Precio por unidad al que se le vendió a ESTE cliente (editable en el pedido; puede ser menor al publicado). */
   precio_unitario_snapshot: number;
+  /** Costo unitario del producto al crear el pedido, congelado para que el histórico no se mueva. */
   costo_unitario_snapshot: number;
   estado_actualizado_en: string;
   created_at: string;
