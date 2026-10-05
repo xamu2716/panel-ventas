@@ -258,6 +258,64 @@ export function gananciaPedido(
   return gananciaUnidad(precioUnitario, costoUnitario) * cantidad;
 }
 
+/** Lo mínimo que necesita saber de un pedido para acumular lo realmente vendido. */
+export type VentaLinea = {
+  cantidad: number;
+  precio_unitario_snapshot: number;
+  costo_unitario_snapshot: number;
+};
+
+export type ResumenVentas = {
+  unidades: number;
+  ingresos: number;
+  ganancia: number;
+  /** Ingresos ÷ unidades: el precio promedio al que se vendió de verdad (0 sin ventas). */
+  precioPromedio: number;
+  /** Ganancia ÷ ingresos, en % (0 sin ventas). */
+  margenPct: number;
+};
+
+/**
+ * Acumula lo realmente vendido: cada pedido aporta su PROPIO precio y su propio
+ * costo (snapshots), así que 4 unidades vendidas a 10, 20, 15 y 18 suman 63 de
+ * ingresos aunque el precio publicado fuera otro. El precio publicado del producto
+ * (`productos.precio_venta`) es solo una referencia y nunca entra aquí.
+ * Recibe los pedidos ya filtrados (normalmente los entregados).
+ */
+export function resumenVentas(ventas: VentaLinea[]): ResumenVentas {
+  let unidades = 0;
+  let ingresos = 0;
+  let ganancia = 0;
+  for (const v of ventas) {
+    unidades += v.cantidad;
+    ingresos += totalPedido(v.precio_unitario_snapshot, v.cantidad);
+    ganancia += gananciaPedido(v.precio_unitario_snapshot, v.costo_unitario_snapshot, v.cantidad);
+  }
+  return {
+    unidades,
+    ingresos,
+    ganancia,
+    precioPromedio: unidades > 0 ? ingresos / unidades : 0,
+    margenPct: ingresos > 0 ? (ganancia / ingresos) * 100 : 0,
+  };
+}
+
+/**
+ * Margen "real" de lo vendido incluyendo la publicidad asignada a la referencia:
+ * a la ganancia de lo vendido se le resta `publicidadUnidad` por cada unidad
+ * vendida (ver `publicidadPorUnidad`), sobre los ingresos reales. Sin ventas da 0.
+ */
+export function margenRealPct(resumen: ResumenVentas, publicidadUnidad: number): number {
+  if (resumen.ingresos <= 0) return 0;
+  return ((resumen.ganancia - publicidadUnidad * resumen.unidades) / resumen.ingresos) * 100;
+}
+
+/** Cuánto por debajo del precio publicado se vendió, en % (0 si no hubo rebaja o no hay publicado). */
+export function rebajaPct(precioPublicado: number, precioVendido: number): number {
+  if (!precioPublicado || precioPublicado <= 0) return 0;
+  return Math.max(0, ((precioPublicado - precioVendido) / precioPublicado) * 100);
+}
+
 export function stockBajo(stock: number, umbral: number): boolean {
   return stock <= umbral;
 }
