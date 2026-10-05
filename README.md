@@ -16,6 +16,11 @@ referencias a la vez, repartiendo sus costos compartidos entre ellas, y cada rea
 recalcula el costo del producto como promedio ponderado con lo que ya había en stock — nunca se
 teclea el costo unitario a mano salvo como ajuste puntual editable.
 
+El precio de venta se fija **por pedido**: cada pedido guarda el precio real al que se le vendió a ese
+cliente (en Marketplace se publica más alto y se rebaja según el comprador). El precio de cada
+producto es solo el precio publicado, una referencia que se sugiere al crear el pedido. Ingresos,
+ganancia, márgenes y gráficas se calculan sumando los precios reales de lo vendido contra lo que costó.
+
 ## Desarrollo local
 
 1. Instala dependencias:
